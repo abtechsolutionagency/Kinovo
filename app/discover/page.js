@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Search, MapPin, Users, TrendingUp, Filter, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { mockDestinations, mockTravelGroups } from '@/lib/mockData';
+import { mockDestinations, mockTravelGroups, mockUser } from '@/lib/mockData';\nimport { cityGroups } from '@/lib/cityGroups';\nimport { calculateMatchScore, getMatchLevel } from '@/lib/matchScoring';
 import { BottomNav } from '@/components/BottomNav';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

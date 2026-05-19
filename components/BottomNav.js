@@ -2,15 +2,15 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Compass, MessageCircle, Sparkles, User } from 'lucide-react';
+import { Home, Compass, MessageCircle, Sparkles, User, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/' },
     { icon: Compass, label: 'Discover', href: '/discover' },
+    { icon: Users, label: 'Community', href: '/community' },
     { icon: Sparkles, label: 'Concierge', href: '/concierge' },
     { icon: MessageCircle, label: 'Messages', href: '/messages' },
     { icon: User, label: 'Profile', href: '/profile' },
@@ -18,7 +18,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-t border-purple-500/20">
-      <div className="flex items-center justify-around px-4 py-3 max-w-screen-xl mx-auto">
+      <div className="flex items-center justify-around px-2 py-3 max-w-screen-xl mx-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -37,13 +37,13 @@ export function BottomNav() {
                   }`}
                 >
                   <Icon
-                    className={`w-6 h-6 ${
+                    className={`w-5 h-5 ${
                       isActive ? 'text-white' : 'text-purple-300'
                     }`}
                   />
                 </div>
                 <span
-                  className={`text-xs ${
+                  className={`text-[10px] ${
                     isActive ? 'text-purple-300 font-semibold' : 'text-purple-400'
                   }`}
                 >
