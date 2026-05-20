@@ -321,7 +321,7 @@ export default function LandingPage() {
                 Most Popular
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Lite</h3>
-              <div className="text-4xl font-bold text-pink-400 mb-6">£4.99</div>
+              <div className="text-4xl font-bold text-pink-400 mb-6">£2.99</div>
               <ul className="space-y-3 text-purple-300">
                 <li className="flex items-center gap-2">
                   <Heart className="w-4 h-4" />
@@ -353,7 +353,7 @@ export default function LandingPage() {
                 <Crown className="w-6 h-6 text-yellow-400" />
                 <h3 className="text-2xl font-bold text-white">Premium</h3>
               </div>
-              <div className="text-4xl font-bold text-purple-300 mb-6">£9.99</div>
+              <div className="text-4xl font-bold text-purple-300 mb-6">£4.99</div>
               <ul className="space-y-3 text-purple-300">
                 <li className="flex items-center gap-2">
                   <Heart className="w-4 h-4" />

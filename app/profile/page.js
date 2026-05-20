@@ -140,7 +140,7 @@ export default function ProfilePage() {
               <li>✓ Profile boosts</li>
             </ul>
             <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Upgrade Now - £9.99/month
+              Upgrade Now - £4.99/month
             </Button>
           </motion.div>
         )}

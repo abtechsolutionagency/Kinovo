@@ -18,7 +18,7 @@ Kinovo is a private beta invite-only AI-powered travel and social discovery plat
 - **Messaging**: Full messaging UI with translation toggle (ready for real-time translation)
 - **Travel Groups**: Browse and join destination-based groups
 - **Safety Center**: Comprehensive safety guidelines and community standards
-- **Premium Tiers**: Free, Lite (£4.99), Premium (£9.99)
+- **Premium Tiers**: Free, Lite (£2.99), Premium (£4.99)
 - **Mobile-First Design**: Responsive PWA-ready design
 - **Bottom Navigation**: Native app-like navigation
 - **Dark Theme**: Premium glassmorphism design

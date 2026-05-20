@@ -340,8 +340,8 @@ yarn add stripe @stripe/stripe-js
 
 1. Go to Products
 2. Create two products:
-   - **Lite**: £4.99/month recurring
-   - **Premium**: £9.99/month recurring
+   - **Lite**: £2.99/month recurring
+   - **Premium**: £4.99/month recurring
 3. Copy the Price IDs for each
 
 #### F. Implementation
