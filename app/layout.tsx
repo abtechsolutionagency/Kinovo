@@ -15,14 +15,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://kinovo.life'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'Kinovo - Travel. Connect. Belong.',
     description: 'A safer way for open-minded travelers to meet worldwide.',
-    url: 'https://kinovo.life',
+    url: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
     siteName: 'Kinovo',
     images: [
       {
