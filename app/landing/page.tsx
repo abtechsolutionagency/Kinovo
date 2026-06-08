@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { LandingNav } from '@/components/LandingNav';
 
 export default function KinovoLandingPage() {
   const [email, setEmail] = useState('');
@@ -109,17 +110,7 @@ export default function KinovoLandingPage() {
             </span>
           </motion.div>
           
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              className="hidden sm:inline-flex text-purple-200 hover:text-white hover:bg-white/5"
-            >
-              Sign In
-            </Button>
-            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25">
-              Join Waitlist
-            </Button>
-          </div>
+          <LandingNav joinLabel="Join Waitlist" />
         </div>
       </motion.nav>
 

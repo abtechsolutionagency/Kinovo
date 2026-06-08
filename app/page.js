@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import Link from 'next/link';
 import { mockDestinations } from '@/lib/mockData';
+import { LandingNav } from '@/components/LandingNav';
 
 export default function LandingPage() {
   const [email, setEmail] = useState('');
@@ -35,16 +36,7 @@ export default function LandingPage() {
           </motion.div>
           
           <div className="flex items-center gap-4">
-            <Link href="/auth">
-              <Button variant="ghost" className="text-white hover:text-purple-400">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/auth">
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
-                Join Beta
-              </Button>
-            </Link>
+            <LandingNav />
           </div>
         </div>
       </nav>

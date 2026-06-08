@@ -2,42 +2,95 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Globe, Mail, Lock, ArrowLeft, Sparkles } from 'lucide-react';
+import { Globe, ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
+import { authApi } from '@/lib/apiClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
-  const { setUser } = useAuthStore();
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { setAuth } = useAuthStore();
   const router = useRouter();
 
-  const handleSubmit = async (e) => {
+  const handleLoginSignup = async (e) => {
     e.preventDefault();
-    
-    // Mock authentication
-    const mockUser = {
-      id: 'user1',
-      name: 'Alex Rivera',
-      email: email,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-      verified: true,
-      isPremium: false
-    };
-    
-    setUser(mockUser);
-    toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
-    
-    setTimeout(() => {
+    setLoading(true);
+
+    try {
+      const data =
+        mode === 'login'
+          ? await authApi.login({ email, password })
+          : await authApi.signup({
+              email,
+              password,
+              name: name || email.split('@')[0],
+              inviteCode,
+            });
+
+      setAuth({ user: data.user, token: data.token });
+      toast.success(mode === 'login' ? 'Welcome back!' : 'Account created successfully!');
       router.push('/discover');
-    }, 500);
+    } catch (error) {
+      toast.error(error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const data = await authApi.forgotPassword({ email });
+      toast.success(data.message);
+      if (data.resetToken) {
+        setResetToken(data.resetToken);
+        setMode('reset');
+        toast.info('Dev mode: reset token loaded automatically');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Request failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await authApi.resetPassword({ token: resetToken, newPassword });
+      toast.success('Password reset! You can sign in now.');
+      setMode('login');
+      setPassword('');
+      setResetToken('');
+      setNewPassword('');
+    } catch (error) {
+      toast.error(error.message || 'Reset failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const titles = {
+    login: 'Welcome Back',
+    signup: 'Join Kinovo',
+    forgot: 'Forgot Password',
+    reset: 'Reset Password',
   };
 
   return (
@@ -55,7 +108,6 @@ export default function AuthPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-8"
         >
-          {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-8">
             <Globe className="w-8 h-8 text-purple-400" />
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -63,15 +115,15 @@ export default function AuthPage() {
             </span>
           </div>
 
-          {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              {isLogin ? 'Welcome Back' : 'Join Kinovo'}
-            </h1>
+            <h1 className="text-3xl font-bold text-white mb-2">{titles[mode]}</h1>
             <p className="text-purple-300">
-              {isLogin ? 'Sign in to your account' : 'Create your account'}
+              {mode === 'login' && 'Sign in to your account'}
+              {mode === 'signup' && 'Create your account'}
+              {mode === 'forgot' && "We'll send you a reset link"}
+              {mode === 'reset' && 'Enter your new password'}
             </p>
-            {!isLogin && (
+            {mode === 'signup' && (
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-sm mt-4">
                 <Sparkles className="w-3 h-3" />
                 Private Beta - Invite Only
@@ -79,111 +131,159 @@ export default function AuthPage() {
             )}
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email" className="text-purple-200">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400 mt-2"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-purple-200">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400 mt-2"
-              />
-            </div>
-
-            {!isLogin && (
+          {(mode === 'login' || mode === 'signup') && (
+            <form onSubmit={handleLoginSignup} className="space-y-4">
               <div>
-                <Label htmlFor="inviteCode" className="text-purple-200">
-                  Invite Code
-                </Label>
+                <Label htmlFor="email" className="text-purple-200">Email</Label>
                 <Input
-                  id="inviteCode"
-                  type="text"
-                  placeholder="KINOVO2025"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  required={!isLogin}
-                  className="bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400 mt-2"
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
                 />
-                <p className="text-xs text-purple-400 mt-1">
-                  Don't have one? <Link href="/" className="underline">Join waitlist</Link>
-                </p>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-            >
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Button>
-          </form>
-
-          {/* Social Auth */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-purple-500/20"></div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-purple-200">Password</Label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-xs text-purple-400 hover:text-purple-300"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-950/50 text-purple-300">Or continue with</span>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-6">
+              {mode === 'signup' && (
+                <>
+                  <div>
+                    <Label htmlFor="name" className="text-purple-200">Display Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Alex Rivera"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="inviteCode" className="text-purple-200">Invite Code</Label>
+                    <Input
+                      id="inviteCode"
+                      type="text"
+                      placeholder="KINOVO2025"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value)}
+                      required
+                      className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                    />
+                    <p className="text-xs text-purple-400 mt-1">
+                      Don&apos;t have one? <Link href="/" className="underline">Join waitlist</Link>
+                    </p>
+                  </div>
+                </>
+              )}
+
               <Button
-                type="button"
-                variant="outline"
-                className="bg-white/5 border-purple-500/20 text-white hover:bg-white/10"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Google
+                {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="bg-white/5 border-purple-500/20 text-white hover:bg-white/10"
-              >
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                </svg>
-                Apple
-              </Button>
-            </div>
-          </div>
+            </form>
+          )}
 
-          {/* Toggle */}
-          <div className="mt-6 text-center text-purple-300">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-purple-400 hover:text-purple-300 font-semibold"
-            >
-              {isLogin ? 'Sign Up' : 'Sign In'}
-            </button>
-          </div>
+          {mode === 'forgot' && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <Label htmlFor="forgot-email" className="text-purple-200">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+              <button type="button" onClick={() => setMode('login')} className="w-full text-sm text-purple-400 hover:text-purple-300">
+                Back to sign in
+              </button>
+            </form>
+          )}
+
+          {mode === 'reset' && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <Label htmlFor="reset-token" className="text-purple-200">Reset Token</Label>
+                <Input
+                  id="reset-token"
+                  type="text"
+                  placeholder="Paste token from email"
+                  value={resetToken}
+                  onChange={(e) => setResetToken(e.target.value)}
+                  required
+                  className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-password" className="text-purple-200">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="mt-2 bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400"
+                />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </Button>
+              <button type="button" onClick={() => setMode('login')} className="w-full text-sm text-purple-400 hover:text-purple-300">
+                Back to sign in
+              </button>
+            </form>
+          )}
+
+          {(mode === 'login' || mode === 'signup') && (
+            <div className="mt-6 text-center text-purple-300">
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                type="button"
+                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                className="text-purple-400 hover:text-purple-300 font-semibold"
+              >
+                {mode === 'login' ? 'Sign Up' : 'Sign In'}
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
