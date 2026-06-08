@@ -19,12 +19,32 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+function createCorsMiddleware() {
+  const corsOrigin = process.env.CORS_ORIGIN;
+
+  // Allow all origins when unset or set to *
+  if (!corsOrigin || corsOrigin === '*') {
+    return cors({
+      origin: true,
+      credentials: true,
+    });
+  }
+
+  const allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
+
+  return cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
-  })
-);
+  });
+}
+
+app.use(createCorsMiddleware());
 app.use(express.json({ limit: '10mb' }));
 applySecurityMiddleware(app);
 
