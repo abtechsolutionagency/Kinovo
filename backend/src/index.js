@@ -1,22 +1,28 @@
 import 'dotenv/config';
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
+import { seedDefaultAdmin } from './config/seedAdmin.js';
 import { seedDefaultInviteCode } from './models/InviteCode.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import connectionRoutes from './routes/connections.js';
+import groupRoutes from './routes/groups.js';
+import travelRoutes from './routes/travels.js';
+import adminRoutes from './routes/admin.js';
+import conversationRoutes from './routes/conversations.js';
 import { ensureUploadDir } from './controllers/profileController.js';
 import { applySecurityMiddleware, notFoundHandler } from './middleware/security.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { requireAuth } from './middleware/auth.js';
-import { requireRole } from './middleware/roles.js';
-import { asyncHandler } from './utils/asyncHandler.js';
+import { initSocket } from './socket/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
 
 function createCorsMiddleware() {
@@ -56,30 +62,31 @@ app.get('/api/health', (_req, res) => {
     success: true,
     status: 'running',
     service: 'kinovo-backend',
-    milestone: 'M2-user-profiles',
+    milestone: 'M6-messaging',
+    realtime: 'socket.io',
   });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-
-app.get(
-  '/api/admin/health',
-  requireAuth,
-  requireRole('admin'),
-  asyncHandler((_req, res) => {
-    res.json({ success: true, message: 'Admin access confirmed' });
-  })
-);
+app.use('/api/connections', connectionRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/travels', travelRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/conversations', conversationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+initSocket(server);
+
 async function start() {
   await connectDB();
   await seedDefaultInviteCode();
-  app.listen(PORT, () => {
+  await seedDefaultAdmin();
+  server.listen(PORT, () => {
     console.log(`Kinovo backend running on http://localhost:${PORT}`);
+    console.log(`Socket.io realtime enabled`);
   });
 }
 

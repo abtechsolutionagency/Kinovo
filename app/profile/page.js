@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Edit,
@@ -13,15 +14,20 @@ import {
   LogOut,
   Plane,
   Loader2,
+  UserPlus,
+  Settings,
+  Sparkles,
+  Compass,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { profileApi } from '@/lib/apiClient';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
 import { BottomNav } from '@/components/BottomNav';
+import { AppPage, PageContent, GlassCard, HeroBanner, StatPill } from '@/components/AppPage';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
@@ -38,7 +44,7 @@ export default function ProfilePage() {
       try {
         const data = await profileApi.getProfile(token);
         setUser(data.user);
-      } catch (error) {
+      } catch {
         toast.error('Failed to load profile');
       } finally {
         setLoading(false);
@@ -49,15 +55,25 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-      </div>
+      <AppPage>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+        </div>
+      </AppPage>
     );
   }
 
   if (!user) return null;
 
   const prefs = user.travelPreferences || {};
+  const trustPercent = Math.min(Math.max((user.trustScore || 0) * 20, 8), 100);
+  const profileComplete = [
+    user.bio,
+    user.location,
+    user.languages?.length,
+    user.interests?.length,
+    prefs.budget,
+  ].filter(Boolean).length;
 
   const handleLogout = async () => {
     await logoutAsync();
@@ -66,168 +82,223 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-purple-950 to-slate-950 pb-20">
-      <div className="relative h-48 bg-gradient-to-r from-purple-900/50 to-pink-900/50">
-        <div className="absolute top-4 right-4">
-          <Link href="/profile/edit">
-            <Button size="sm" variant="ghost" className="text-white">
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <AppPage>
+      <HeroBanner alt="Profile cover">
+        <Link href="/profile/edit" className="absolute top-4 right-4">
+          <Button size="sm" className="bg-white/10 backdrop-blur border border-white/20 text-white hover:bg-white/20">
+            <Edit className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+        </Link>
+      </HeroBanner>
 
-      <div className="px-4 -mt-16">
-        <div className="flex items-end gap-4 mb-6">
-          <div className="relative">
+      <PageContent className="-mt-14 lg:-mt-20 relative z-10">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:items-start">
+          {/* Left: identity */}
+          <div className="lg:col-span-4 lg:sticky lg:top-28 space-y-5">
+        <div className="flex gap-4 items-end lg:flex-col lg:items-start lg:gap-4">
+          <div className="relative shrink-0">
             <img
               src={resolveAvatarUrl(user.avatar)}
               alt={user.name}
-              className="w-32 h-32 rounded-2xl border-4 border-slate-950 bg-white/10 object-cover"
+              className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-2xl border-4 border-slate-950 object-cover bg-purple-900/50 shadow-xl"
             />
             {user.verified && (
-              <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-blue-500 border-4 border-slate-950 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-500 border-2 border-slate-950 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-white" />
               </div>
             )}
           </div>
-
-          <div className="flex-1 pb-2">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold text-white">{user.name}</h1>
-              {user.isPremium && <Crown className="w-6 h-6 text-yellow-400" />}
+          <div className="flex-1 min-w-0 pb-1 lg:pb-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl lg:text-2xl font-bold text-white truncate">{user.name}</h1>
+              {user.isPremium && <Crown className="w-5 h-5 text-yellow-400 shrink-0" />}
             </div>
-            <div className="flex items-center gap-2 text-purple-300 text-sm">
-              <MapPin className="w-4 h-4" />
-              <span>{user.location || 'Add your location'}</span>
-            </div>
-            <p className="text-purple-400 text-xs mt-1">{user.email}</p>
+            <p className="text-purple-300 text-sm flex items-center gap-1 mt-0.5 truncate">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              {user.location || 'Add your location'}
+            </p>
           </div>
         </div>
 
-        <p className="text-purple-200 mb-6">{user.bio || 'Add a bio to tell others about yourself.'}</p>
+        <p className="text-purple-200 text-sm lg:text-base leading-relaxed">
+          {user.bio || 'Tell travelers about yourself — add a bio in Edit Profile.'}
+        </p>
 
-        <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-purple-200 font-semibold">Trust Score</span>
-            <span className="text-2xl font-bold text-purple-400">{user.trustScore || 0}</span>
-          </div>
-          <Progress value={(user.trustScore || 0) * 20} className="h-2" />
+        {/* Quick actions */}
+        <div className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-2">
+          <Link href="/discover">
+            <GlassCard className="!p-3 lg:!p-4 text-center lg:text-left lg:flex lg:items-center lg:gap-3 hover:!border-purple-400/50">
+              <Compass className="w-5 h-5 text-purple-400 mx-auto lg:mx-0 mb-1 lg:mb-0" />
+              <span className="text-xs lg:text-sm text-purple-200">Discover</span>
+            </GlassCard>
+          </Link>
+          <Link href="/connections">
+            <GlassCard className="!p-3 lg:!p-4 text-center lg:text-left lg:flex lg:items-center lg:gap-3 hover:!border-purple-400/50">
+              <UserPlus className="w-5 h-5 text-pink-400 mx-auto lg:mx-0 mb-1 lg:mb-0" />
+              <span className="text-xs lg:text-sm text-purple-200">Connect</span>
+            </GlassCard>
+          </Link>
+          <Link href="/messages">
+            <GlassCard className="!p-3 lg:!p-4 text-center lg:text-left lg:flex lg:items-center lg:gap-3 hover:!border-purple-400/50">
+              <MessageCircle className="w-5 h-5 text-purple-400 mx-auto lg:mx-0 mb-1 lg:mb-0" />
+              <span className="text-xs lg:text-sm text-purple-200">Messages</span>
+            </GlassCard>
+          </Link>
         </div>
+
+        {/* Stats row */}
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:overflow-visible lg:grid lg:grid-cols-2 lg:gap-2 scrollbar-hide">
+          <StatPill icon={Shield} label="Trust" value={user.trustScore || 0} />
+          <StatPill icon={Heart} label="Interests" value={user.interests?.length || 0} />
+          <StatPill icon={Languages} label="Languages" value={user.languages?.length || 0} />
+          <StatPill icon={Sparkles} label="Profile" value={`${profileComplete}/5`} />
+        </div>
+          </div>
+
+          {/* Right: details & settings */}
+          <div className="lg:col-span-8 space-y-4 mt-5 lg:mt-0">
+
+        <GlassCard className="mb-0">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-purple-200 font-semibold text-sm">Trust Score</span>
+            <span className="text-xl font-bold text-purple-300">{user.trustScore || 0}/5</span>
+          </div>
+          <Progress value={trustPercent} className="h-2.5 bg-purple-950/80 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-pink-500" />
+          <p className="text-purple-400 text-xs mt-2">
+            Verify your profile and connect with travelers to increase trust.
+          </p>
+        </GlassCard>
 
         {user.languages?.length > 0 && (
-          <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3">
-              <Languages className="w-5 h-5" />
-              <span>Languages</span>
+          <GlassCard className="mb-4">
+            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3 text-sm">
+              <Languages className="w-4 h-4" />
+              Languages
             </div>
             <div className="flex flex-wrap gap-2">
               {user.languages.map((lang) => (
-                <Badge key={lang} variant="secondary" className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                <Badge key={lang} className="bg-purple-500/25 text-purple-200 border-purple-500/40">
                   {lang}
                 </Badge>
               ))}
             </div>
-          </div>
+          </GlassCard>
         )}
 
         {user.interests?.length > 0 && (
-          <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3">
-              <Heart className="w-5 h-5" />
-              <span>Travel Interests</span>
+          <GlassCard className="mb-4">
+            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3 text-sm">
+              <Heart className="w-4 h-4" />
+              Travel Interests
             </div>
             <div className="flex flex-wrap gap-2">
               {user.interests.map((interest) => (
-                <Badge key={interest} variant="secondary" className="bg-pink-500/20 text-pink-300 border-pink-500/30">
+                <Badge key={interest} className="bg-pink-500/25 text-pink-200 border-pink-500/40">
                   {interest}
                 </Badge>
               ))}
             </div>
-          </div>
+          </GlassCard>
         )}
 
         {(prefs.budget || prefs.travelStyle || prefs.accommodation) && (
-          <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3">
-              <Plane className="w-5 h-5" />
-              <span>Travel Preferences</span>
+          <GlassCard className="mb-0">
+            <div className="flex items-center gap-2 text-purple-200 font-semibold mb-3 text-sm">
+              <Plane className="w-4 h-4" />
+              Travel Preferences
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
               {prefs.budget && (
-                <div className="text-purple-300">
-                  <span className="text-purple-400">Budget:</span> {prefs.budget}
+                <div className="rounded-lg bg-white/5 px-3 py-2">
+                  <span className="text-purple-400 text-xs block">Budget</span>
+                  <span className="text-white">{prefs.budget}</span>
                 </div>
               )}
               {prefs.travelStyle && (
-                <div className="text-purple-300">
-                  <span className="text-purple-400">Style:</span> {prefs.travelStyle}
+                <div className="rounded-lg bg-white/5 px-3 py-2">
+                  <span className="text-purple-400 text-xs block">Style</span>
+                  <span className="text-white">{prefs.travelStyle}</span>
                 </div>
               )}
               {prefs.accommodation && (
-                <div className="text-purple-300">
-                  <span className="text-purple-400">Stay:</span> {prefs.accommodation}
+                <div className="rounded-lg bg-white/5 px-3 py-2">
+                  <span className="text-purple-400 text-xs block">Stay</span>
+                  <span className="text-white">{prefs.accommodation}</span>
                 </div>
               )}
               {prefs.tripDuration && (
-                <div className="text-purple-300">
-                  <span className="text-purple-400">Duration:</span> {prefs.tripDuration}
+                <div className="rounded-lg bg-white/5 px-3 py-2">
+                  <span className="text-purple-400 text-xs block">Duration</span>
+                  <span className="text-white">{prefs.tripDuration}</span>
                 </div>
               )}
             </div>
-          </div>
+          </GlassCard>
         )}
 
         {!user.isPremium && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 backdrop-blur-lg border border-purple-500/30 rounded-2xl p-6 mb-6"
+            className="rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/60 to-pink-900/40 p-5 lg:p-6"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <Crown className="w-8 h-8 text-yellow-400" />
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+                <Crown className="w-6 h-6 text-yellow-400" />
+              </div>
               <div>
-                <h3 className="text-xl font-bold text-white">Upgrade to Premium</h3>
-                <p className="text-purple-300 text-sm">Unlock unlimited features</p>
+                <h3 className="text-lg font-bold text-white">Go Premium</h3>
+                <p className="text-purple-200 text-sm mt-1">
+                  Unlimited AI concierge, translation & profile boosts
+                </p>
               </div>
             </div>
-            <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Upgrade Now - £4.99/month
+            <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 h-11 font-semibold">
+              Upgrade · £4.99/mo
             </Button>
           </motion.div>
         )}
 
         {user.memberSince && (
-          <div className="text-center text-purple-400 text-sm mb-6">
-            Member since {user.memberSince}
-          </div>
+          <p className="text-center lg:text-left text-purple-500 text-xs">Member since {user.memberSince}</p>
         )}
 
-        <div className="space-y-2">
-          <Link href="/profile/edit">
-            <Button variant="outline" className="w-full bg-white/5 border-purple-500/20 text-white hover:bg-white/10">
-              Account Settings
-            </Button>
-          </Link>
-          <Link href="/safety">
-            <Button variant="outline" className="w-full bg-white/5 border-purple-500/20 text-white hover:bg-white/10">
-              <Shield className="w-4 h-4 mr-2" />
-              Safety Center
-            </Button>
-          </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+          {[
+            { href: '/connections', icon: UserPlus, label: 'My Connections' },
+            ...(user.role === 'admin'
+              ? [{ href: '/admin/travels', icon: Settings, label: 'Admin · Manage Travels', accent: true }]
+              : []),
+            { href: '/profile/edit', icon: Edit, label: 'Account Settings' },
+            { href: '/safety', icon: Shield, label: 'Safety Center' },
+          ].map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Button
+                variant="outline"
+                className={`w-full h-12 justify-start bg-white/5 border-purple-500/20 text-white hover:bg-white/10 ${
+                  item.accent ? 'border-amber-500/30 text-amber-200' : ''
+                }`}
+              >
+                <item.icon className="w-4 h-4 mr-3 opacity-80" />
+                {item.label}
+              </Button>
+            </Link>
+          ))}
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="w-full bg-white/5 border-red-500/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+            className="w-full h-12 justify-start bg-red-500/5 border-red-500/25 text-red-300 hover:bg-red-500/10 lg:col-span-2"
           >
-            <LogOut className="w-4 h-4 mr-2" />
+            <LogOut className="w-4 h-4 mr-3" />
             Log Out
           </Button>
         </div>
-      </div>
+          </div>
+        </div>
+      </PageContent>
 
       <BottomNav />
-    </div>
+    </AppPage>
   );
 }

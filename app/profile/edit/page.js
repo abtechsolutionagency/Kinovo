@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Save, Upload, Sparkles, Lock, Heart, Plane, Camera, Loader2 } from 'lucide-react';
+import { Save, Upload, Sparkles, Lock, Heart, Plane, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,12 +11,12 @@ import { ProfileImporter } from '@/components/ProfileImporter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, profileApi } from '@/lib/apiClient';
 import { TRAVEL_INTERESTS, TRAVEL_PREFERENCE_OPTIONS, DEFAULT_TRAVEL_PREFERENCES } from '@/lib/profileOptions';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { AppPage, PageContent, PageHeader, GlassCard } from '@/components/AppPage';
 
 export default function ProfileEditPage() {
   const { user, token, setUser } = useAuthStore();
@@ -65,9 +65,11 @@ export default function ProfileEditPage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-      </div>
+      <AppPage>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+        </div>
+      </AppPage>
     );
   }
 
@@ -174,19 +176,9 @@ export default function ProfileEditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-purple-950 to-slate-950 pb-20">
-      <div className="bg-slate-950/80 backdrop-blur-lg border-b border-purple-500/20 px-4 py-4">
-        <div className="flex items-center gap-3">
-          <Link href="/profile">
-            <Button variant="ghost" size="icon" className="text-purple-300">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold text-white">Edit Profile</h1>
-        </div>
-      </div>
-
-      <div className="px-4 py-6 max-w-2xl mx-auto">
+    <AppPage>
+      <PageHeader title="Edit Profile" subtitle="Update your travel identity" backHref="/profile" />
+      <PageContent>
         <div className="flex flex-col items-center mb-6">
           <div className="relative">
             <img
@@ -240,7 +232,7 @@ export default function ProfileEditPage() {
           </TabsList>
 
           <TabsContent value="edit" className="mt-6">
-            <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 space-y-4">
+            <GlassCard className="space-y-4 !p-5">
               <div>
                 <Label htmlFor="name" className="text-purple-200">Display Name</Label>
                 <Input
@@ -280,15 +272,15 @@ export default function ProfileEditPage() {
                   className="mt-2 bg-white/10 border-purple-500/30 text-white"
                 />
               </div>
-              <Button onClick={handleSaveProfile} disabled={saving} className="w-full bg-gradient-to-r from-purple-600 to-pink-600">
+              <Button onClick={handleSaveProfile} disabled={saving} className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600">
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save Profile'}
               </Button>
-            </div>
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="interests" className="mt-6">
-            <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 space-y-4">
+            <GlassCard className="space-y-4 !p-5">
               <h3 className="text-white font-semibold">Travel Interests</h3>
               <p className="text-purple-300 text-sm">Select what you enjoy while traveling</p>
               <div className="flex flex-wrap gap-2">
@@ -310,14 +302,14 @@ export default function ProfileEditPage() {
                   );
                 })}
               </div>
-              <Button onClick={handleSaveInterests} disabled={saving} className="w-full bg-gradient-to-r from-purple-600 to-pink-600">
+              <Button onClick={handleSaveInterests} disabled={saving} className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600">
                 {saving ? 'Saving...' : 'Save Interests'}
               </Button>
-            </div>
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="preferences" className="mt-6">
-            <div className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 space-y-4">
+            <GlassCard className="space-y-4 !p-5">
               <h3 className="text-white font-semibold">Travel Preferences</h3>
               <p className="text-purple-300 text-sm">Help us match you with compatible travelers</p>
 
@@ -352,14 +344,15 @@ export default function ProfileEditPage() {
                 ))}
               </div>
 
-              <Button onClick={handleSavePreferences} disabled={saving} className="w-full bg-gradient-to-r from-purple-600 to-pink-600">
+              <Button onClick={handleSavePreferences} disabled={saving} className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600">
                 {saving ? 'Saving...' : 'Save Preferences'}
               </Button>
-            </div>
+            </GlassCard>
           </TabsContent>
 
           <TabsContent value="password" className="mt-6">
-            <form onSubmit={handleChangePassword} className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-2xl p-6 space-y-4">
+            <form onSubmit={handleChangePassword}>
+            <GlassCard className="space-y-4 !p-5">
               <h3 className="text-white font-semibold">Change Password</h3>
               <div>
                 <Label htmlFor="current" className="text-purple-200">Current Password</Label>
@@ -384,9 +377,10 @@ export default function ProfileEditPage() {
                   className="mt-2 bg-white/10 border-purple-500/30 text-white"
                 />
               </div>
-              <Button type="submit" disabled={saving} className="w-full bg-gradient-to-r from-purple-600 to-pink-600">
+              <Button type="submit" disabled={saving} className="w-full h-11 bg-gradient-to-r from-purple-600 to-pink-600">
                 {saving ? 'Updating...' : 'Update Password'}
               </Button>
+            </GlassCard>
             </form>
           </TabsContent>
 
@@ -398,7 +392,7 @@ export default function ProfileEditPage() {
             <ProfileImporter onImport={handleBioUpdate} />
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </PageContent>
+    </AppPage>
   );
 }

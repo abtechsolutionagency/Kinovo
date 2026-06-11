@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
 import {
   getProfile,
   updateProfile,
@@ -9,23 +8,17 @@ import {
   updateInterests,
   getPreferences,
   updatePreferences,
-  ensureUploadDir,
 } from '../controllers/profileController.js';
+import {
+  discoverTravelers,
+  getTravelerProfile,
+  getMatchScore,
+} from '../controllers/discoverController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-const uploadDir = ensureUploadDir();
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${req.user._id}-${Date.now()}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -48,5 +41,9 @@ router.get('/me/interests', asyncHandler(getInterests));
 router.put('/me/interests', asyncHandler(updateInterests));
 router.get('/me/preferences', asyncHandler(getPreferences));
 router.put('/me/preferences', asyncHandler(updatePreferences));
+
+router.get('/discover', asyncHandler(discoverTravelers));
+router.get('/:id/match-score', asyncHandler(getMatchScore));
+router.get('/:id', asyncHandler(getTravelerProfile));
 
 export default router;

@@ -85,4 +85,21 @@ userSchema.methods.toPublicJSON = function () {
   };
 };
 
+userSchema.methods.toDiscoverJSON = function () {
+  return {
+    id: this._id.toString(),
+    name: this.name,
+    avatar: this.avatar,
+    bio: this.bio,
+    location: this.location,
+    verified: this.verified,
+    trustScore: this.trustScore,
+    isPremium: this.isPremium,
+    languages: this.languages,
+    interests: this.interests,
+    travelPreferences: this.travelPreferences || {},
+    memberSince: this.memberSince?.toISOString?.()?.split('T')[0] || this.memberSince,
+  };
+};
+
 export const User = mongoose.models.User || mongoose.model('User', userSchema);

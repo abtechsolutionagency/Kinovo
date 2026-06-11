@@ -134,8 +134,17 @@ code {
 @layer base {
   * {
     @apply border-border;
-    }
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-slate-950 text-foreground;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .pb-nav {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }

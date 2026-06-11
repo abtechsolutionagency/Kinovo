@@ -1,51 +1,112 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, TrendingUp, Clock, Users, Sparkles, Plus } from 'lucide-react';
+import { MessageSquare, Users, Sparkles, Plus, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BottomNav } from '@/components/BottomNav';
+import { AppPage, PageContent, PageHeader, CardGrid } from '@/components/AppPage';
+import { GroupCard } from '@/components/GroupCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cityGroups, discussionPrompts } from '@/lib/cityGroups';
+import { useAuthStore } from '@/store/authStore';
+import { groupApi, connectionApi } from '@/lib/apiClient';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function CommunityPage() {
+  const { token } = useAuthStore();
   const [aiPrompts, setAiPrompts] = useState(discussionPrompts);
-  const [loading, setLoading] = useState(false);
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const loadGroups = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await groupApi.list({ limit: 30 }, token);
+      setGroups(data.groups || []);
+    } catch {
+      toast.error('Failed to load groups');
+    } finally {
+      setGroupsLoading(false);
+    }
+  }, [token]);
+
+  const loadConnections = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await connectionApi.list('pending', token);
+      const received = (data.connections || []).filter((c) => c.direction === 'received');
+      setPendingCount(received.length);
+    } catch {
+      /* ignore */
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadGroups();
+    loadConnections();
+  }, [loadGroups, loadConnections]);
 
   const generateNewPrompts = async () => {
-    setLoading(true);
+    setPromptLoading(true);
     try {
       const response = await fetch('/api/ai/discussion-prompts');
       const data = await response.json();
       if (data.success && data.prompts) {
-        // Add to existing prompts
         setAiPrompts([...aiPrompts, ...data.prompts.slice(0, 3)]);
       }
-    } catch (error) {
-      console.error('Error generating prompts:', error);
+    } catch {
+      toast.error('Could not refresh prompts');
     } finally {
-      setLoading(false);
+      setPromptLoading(false);
+    }
+  };
+
+  const handleJoin = async (group) => {
+    setJoiningId(group.id);
+    try {
+      await groupApi.join(group.id, token);
+      toast.success('Joined group!');
+      await loadGroups();
+    } catch (err) {
+      toast.error(err.message || 'Failed to join');
+    } finally {
+      setJoiningId(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-purple-950 to-slate-950 pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-lg border-b border-purple-500/20 px-4 py-4">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-white">Community</h1>
-          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600">
-            <Plus className="w-4 h-4 mr-2" />
-            New Post
-          </Button>
-        </div>
-        <p className="text-purple-300 text-sm">
-          Connect with travelers worldwide
-        </p>
-      </div>
+    <AppPage>
+      <PageHeader
+        title="Community"
+        subtitle="Connect with travelers worldwide"
+        action={
+          <div className="flex gap-2">
+            <Link href="/connections">
+              <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-200 h-9 relative">
+                <UserPlus className="w-4 h-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-600 text-[9px] flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+            <Link href="/groups/create">
+              <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 h-9">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="px-4 py-6">
-        <Tabs defaultValue="discussions" className="w-full">
+      <PageContent>
+        <Tabs defaultValue="groups" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-purple-500/20">
             <TabsTrigger value="discussions" className="data-[state=active]:bg-purple-600">
               <MessageSquare className="w-4 h-4 mr-2" />
@@ -53,14 +114,13 @@ export default function CommunityPage() {
             </TabsTrigger>
             <TabsTrigger value="groups" className="data-[state=active]:bg-purple-600">
               <Users className="w-4 h-4 mr-2" />
-              City Groups
+              Travel Groups
             </TabsTrigger>
           </TabsList>
 
-          {/* Discussions */}
-          <TabsContent value="discussions" className="mt-6 space-y-4">
-            {/* AI Generated Prompts */}
-            <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 backdrop-blur-lg border border-purple-500/30 rounded-xl p-4">
+          <TabsContent value="discussions" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+            <div className="lg:col-span-1 bg-gradient-to-r from-purple-900/30 to-pink-900/30 backdrop-blur-lg border border-purple-500/30 rounded-xl p-4 h-fit lg:sticky lg:top-28">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-purple-400" />
@@ -68,17 +128,14 @@ export default function CommunityPage() {
                 </div>
                 <Button
                   onClick={generateNewPrompts}
-                  disabled={loading}
+                  disabled={promptLoading}
                   size="sm"
                   variant="ghost"
-                  className="text-purple-300 hover:text-purple-200"
+                  className="text-purple-300"
                 >
-                  Refresh
+                  {promptLoading ? '...' : 'Refresh'}
                 </Button>
               </div>
-              <p className="text-purple-300 text-sm mb-3">
-                Start conversations with AI-powered discussion starters
-              </p>
               <div className="space-y-2">
                 {aiPrompts.slice(0, 3).map((prompt, index) => (
                   <motion.button
@@ -86,7 +143,7 @@ export default function CommunityPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="w-full text-left p-3 rounded-lg bg-white/5 border border-purple-500/20 hover:border-purple-500/50 transition-all"
+                    className="w-full text-left p-3 rounded-lg bg-white/5 border border-purple-500/20 hover:border-purple-500/50"
                   >
                     <div className="text-white font-medium mb-1">{prompt.title}</div>
                     <div className="text-purple-300 text-sm">{prompt.preview}</div>
@@ -95,121 +152,80 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* Regular Discussions */}
-            <div className="flex items-center gap-2 text-purple-300 mb-4">
-              <TrendingUp className="w-5 h-5" />
-              <span className="font-semibold">Trending Discussions</span>
-            </div>
-
+            <div className="lg:col-span-2 space-y-4">
             {aiPrompts.map((discussion, index) => (
               <motion.div
-                key={discussion.id}
+                key={discussion.id || index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/50 transition-all cursor-pointer"
+                className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4"
               >
-                <div className="flex items-start gap-3">
-                  <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Discussion${index}`}
-                    alt="Author"
-                    className="w-10 h-10 rounded-full bg-purple-500/20"
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-white font-semibold mb-1">
-                      {discussion.title}
-                    </h3>
-                    <p className="text-purple-300 text-sm mb-3">
-                      {discussion.preview}
-                    </p>
-                    <div className="flex items-center gap-4 text-purple-400 text-sm">
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4" />
-                        <span>{discussion.replies} replies</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>2h ago</span>
-                      </div>
-                      {discussion.category && (
-                        <span className="px-2 py-1 rounded-full bg-purple-500/20 text-xs">
-                          {discussion.category}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <h3 className="text-white font-semibold mb-1">{discussion.title}</h3>
+                <p className="text-purple-300 text-sm">{discussion.preview}</p>
               </motion.div>
             ))}
+            </div>
+            </div>
           </TabsContent>
 
-          {/* City Groups */}
-          <TabsContent value="groups" className="mt-6 space-y-4">
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-purple-400" />
-                <h3 className="text-white font-semibold">Pre-Seeded Communities</h3>
+          <TabsContent value="groups" className="mt-6">
+            {groupsLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
               </div>
-              <p className="text-purple-300 text-sm">
-                Join local communities in cities worldwide. These groups are ready for members!
-              </p>
-            </div>
-
-            {cityGroups.map((group, index) => (
-              <motion.div
-                key={group.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all cursor-pointer"
-              >
-                <div className="aspect-[16/9] relative">
-                  <img
-                    src={group.image}
-                    alt={group.city}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-2 text-purple-300 text-sm mb-2">
-                      <Users className="w-4 h-4" />
-                      <span>{group.members} members</span>
-                    </div>
-                    <h3 className="text-white font-bold text-lg mb-1">
-                      {group.title}
-                    </h3>
-                    <p className="text-purple-300 text-sm">
-                      {group.city}, {group.country}
-                    </p>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="text-purple-200 text-sm mb-3">
-                    {group.description}
+            ) : groups.length > 0 ? (
+              <CardGrid>
+              {groups.map((group, index) => (
+                <GroupCard
+                  key={group.id}
+                  group={group}
+                  index={index}
+                  onJoin={handleJoin}
+                  joinLoading={joiningId === group.id}
+                />
+              ))}
+              </CardGrid>
+            ) : (
+              <>
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-4 lg:col-span-full">
+                  <p className="text-purple-300 text-sm">
+                    No API groups yet — browse pre-seeded city communities below or create your own.
                   </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {group.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
-                      Join
-                    </Button>
-                  </div>
                 </div>
-              </motion.div>
-            ))}
+                <CardGrid>
+                {cityGroups.map((group, index) => (
+                  <motion.div
+                    key={group.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl overflow-hidden"
+                  >
+                    <div className="aspect-[16/9] relative">
+                      <img src={group.image} alt={group.city} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <h3 className="text-white font-bold text-lg">{group.title}</h3>
+                        <p className="text-purple-300 text-sm">{group.city}, {group.country}</p>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-purple-200 text-sm mb-3">{group.description}</p>
+                      <Link href="/groups/create">
+                        <Button size="sm" className="bg-purple-600">Create Similar Group</Button>
+                      </Link>
+                    </div>
+                  </motion.div>
+                ))}
+                </CardGrid>
+              </>
+            )}
           </TabsContent>
         </Tabs>
-      </div>
+      </PageContent>
 
       <BottomNav />
-    </div>
+    </AppPage>
   );
 }

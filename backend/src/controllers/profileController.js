@@ -3,6 +3,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { User } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { buildAvatarKey, isS3Configured, uploadToS3 } from '../config/s3.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/avatars');
@@ -48,13 +49,30 @@ export async function uploadAvatar(req, res) {
   }
 
   const user = req.user;
-  const avatarPath = `/uploads/avatars/${req.file.filename}`;
-  user.avatar = avatarPath;
+  let avatarUrl;
+
+  if (isS3Configured()) {
+    const key = buildAvatarKey(user._id.toString(), req.file.originalname);
+    avatarUrl = await uploadToS3({
+      key,
+      body: req.file.buffer,
+      contentType: req.file.mimetype,
+    });
+    user.avatar = avatarUrl;
+  } else {
+    const filename = `${user._id}-${Date.now()}${path.extname(req.file.originalname).toLowerCase() || '.jpg'}`;
+    const filePath = path.join(UPLOAD_DIR, filename);
+    fs.writeFileSync(filePath, req.file.buffer);
+    const avatarPath = `/uploads/avatars/${filename}`;
+    user.avatar = avatarPath;
+    avatarUrl = `${getBaseUrl()}${avatarPath}`;
+  }
+
   await user.save();
 
   return res.json({
     success: true,
-    avatarUrl: `${getBaseUrl()}${avatarPath}`,
+    avatarUrl,
     user: user.toPublicJSON(),
     message: 'Profile image uploaded successfully',
   });
