@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import multer from 'multer';
+import { imageUpload } from '../middleware/imageUpload.js';
 import {
   getProfile,
   updateProfile,
@@ -17,18 +17,7 @@ import {
 import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only JPEG, PNG, WebP, and GIF images are allowed'));
-    }
-  },
-});
+const upload = imageUpload;
 
 const router = Router();
 

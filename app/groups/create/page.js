@@ -12,6 +12,7 @@ import { groupApi } from '@/lib/apiClient';
 import { mockDestinations } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { AppPage, PageContent, PageHeader, GlassCard } from '@/components/AppPage';
+import { ImageUploadField } from '@/components/ImageUploadField';
 
 export default function CreateGroupPage() {
   const { token } = useAuthStore();
@@ -46,7 +47,7 @@ export default function CreateGroupPage() {
 
   return (
     <AppPage>
-      <PageHeader title="Create Group" subtitle="Start a travel group" backHref="/discover" />
+      <PageHeader title="Create Group" subtitle="Start a travel group" backHref="/community" />
       <PageContent>
       <form onSubmit={handleSubmit} className="space-y-4">
         <GlassCard className="space-y-4 !p-5">
@@ -103,15 +104,14 @@ export default function CreateGroupPage() {
             className="mt-2 bg-white/10 border-purple-500/30 text-white"
           />
         </div>
-        <div>
-          <Label className="text-purple-200">Cover Image URL (optional)</Label>
-          <Input
-            value={form.image}
-            onChange={(e) => setForm({ ...form, image: e.target.value })}
-            placeholder="https://..."
-            className="mt-2 bg-white/10 border-purple-500/30 text-white"
-          />
-        </div>
+        <ImageUploadField
+          label="Cover image"
+          optional
+          value={form.image}
+          onChange={(url) => setForm({ ...form, image: url })}
+          token={token}
+          disabled={loading}
+        />
         </GlassCard>
         <Button
           type="submit"

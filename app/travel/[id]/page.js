@@ -11,7 +11,7 @@ import { AppPage, PageContent, HeroBanner } from '@/components/AppPage';
 import { useAuthStore } from '@/store/authStore';
 import { travelApi } from '@/lib/apiClient';
 import { getDestinationMeta } from '@/lib/destinations';
-import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { resolveMediaUrl } from '@/lib/avatarUrl';
 import { toast } from 'sonner';
 
 export default function TravelDetailPage() {
@@ -29,7 +29,7 @@ export default function TravelDetailPage() {
         setTravel(data.travel);
       } catch {
         toast.error('Travel not found');
-        router.push('/discover');
+        router.push('/travels');
       } finally {
         setLoading(false);
       }
@@ -39,22 +39,24 @@ export default function TravelDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-      </div>
+      <AppPage>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+        </div>
+      </AppPage>
     );
   }
 
   if (!travel) return null;
 
   const meta = getDestinationMeta(travel.destinationId);
-  const image = travel.image || meta.image;
+  const image = resolveMediaUrl(travel.image) || meta.image;
   const creator = typeof travel.createdBy === 'object' ? travel.createdBy : null;
 
   return (
     <AppPage>
       <HeroBanner src={image} alt={travel.title}>
-        <Link href="/discover" className="absolute top-4 left-4">
+        <Link href="/travels" className="absolute top-4 left-4">
           <Button variant="ghost" size="icon" className="bg-black/40 backdrop-blur text-white border border-white/10">
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -94,7 +96,7 @@ export default function TravelDetailPage() {
             className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-purple-500/20 hover:border-purple-500/50"
           >
             <img
-              src={resolveAvatarUrl(creator.avatar)}
+              src={resolveMediaUrl(creator.avatar)}
               alt={creator.name}
               className="w-12 h-12 rounded-full object-cover"
             />

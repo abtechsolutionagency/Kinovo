@@ -51,7 +51,7 @@ export default function TravelerProfilePage() {
           setConnectionStatus(conn.direction === 'sent' ? 'pending_sent' : 'pending_received');
       } catch {
         toast.error('Traveler not found');
-        router.push('/discover');
+        router.push('/travelers');
       } finally {
         setLoading(false);
       }
@@ -103,7 +103,7 @@ export default function TravelerProfilePage() {
   return (
     <AppPage>
       <HeroBanner src={resolveAvatarUrl(traveler.avatar)} alt={traveler.name} compact>
-        <Link href="/discover" className="absolute top-4 left-4">
+        <Link href="/travelers" className="absolute top-4 left-4">
           <Button variant="ghost" size="icon" className="bg-black/40 backdrop-blur text-white border border-white/10">
             <ArrowLeft className="w-5 h-5" />
           </Button>

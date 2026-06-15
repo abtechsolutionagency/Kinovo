@@ -127,10 +127,10 @@ export default function ProfilePage() {
 
         {/* Quick actions */}
         <div className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-2">
-          <Link href="/discover">
+          <Link href="/travels">
             <GlassCard className="!p-3 lg:!p-4 text-center lg:text-left lg:flex lg:items-center lg:gap-3 hover:!border-purple-400/50">
-              <Compass className="w-5 h-5 text-purple-400 mx-auto lg:mx-0 mb-1 lg:mb-0" />
-              <span className="text-xs lg:text-sm text-purple-200">Discover</span>
+              <Plane className="w-5 h-5 text-purple-400 mx-auto lg:mx-0 mb-1 lg:mb-0" />
+              <span className="text-xs lg:text-sm text-purple-200">Travels</span>
             </GlassCard>
           </Link>
           <Link href="/connections">
@@ -268,7 +268,7 @@ export default function ProfilePage() {
           {[
             { href: '/connections', icon: UserPlus, label: 'My Connections' },
             ...(user.role === 'admin'
-              ? [{ href: '/admin/travels', icon: Settings, label: 'Admin · Manage Travels', accent: true }]
+              ? [{ href: '/admin/travels', icon: Settings, label: 'Admin Dashboard', accent: true }]
               : []),
             { href: '/profile/edit', icon: Edit, label: 'Account Settings' },
             { href: '/safety', icon: Shield, label: 'Safety Center' },
@@ -277,7 +277,7 @@ export default function ProfilePage() {
               <Button
                 variant="outline"
                 className={`w-full h-12 justify-start bg-white/5 border-purple-500/20 text-white hover:bg-white/10 ${
-                  item.accent ? 'border-amber-500/30 text-amber-200' : ''
+                  item.accent ? 'border-purple-500/40 text-purple-200' : ''
                 }`}
               >
                 <item.icon className="w-4 h-4 mr-3 opacity-80" />

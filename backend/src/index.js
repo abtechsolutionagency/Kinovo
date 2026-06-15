@@ -14,7 +14,9 @@ import groupRoutes from './routes/groups.js';
 import travelRoutes from './routes/travels.js';
 import adminRoutes from './routes/admin.js';
 import conversationRoutes from './routes/conversations.js';
+import uploadRoutes from './routes/uploads.js';
 import { ensureUploadDir } from './controllers/profileController.js';
+import { ensureCoverUploadDir } from './controllers/uploadController.js';
 import { applySecurityMiddleware, notFoundHandler } from './middleware/security.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initSocket } from './socket/index.js';
@@ -55,6 +57,7 @@ app.use(express.json({ limit: '10mb' }));
 applySecurityMiddleware(app);
 
 ensureUploadDir();
+ensureCoverUploadDir();
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (_req, res) => {
@@ -73,6 +76,7 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/travels', travelRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/uploads', uploadRoutes);
 app.use('/api/conversations', conversationRoutes);
 
 app.use(notFoundHandler);

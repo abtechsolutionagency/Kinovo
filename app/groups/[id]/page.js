@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/authStore';
 import { groupApi } from '@/lib/apiClient';
 import { getDestinationMeta } from '@/lib/destinations';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { ImageUploadField } from '@/components/ImageUploadField';
 import { toast } from 'sonner';
 
 export default function GroupDetailPage() {
@@ -57,7 +58,7 @@ export default function GroupDetailPage() {
       });
     } catch {
       toast.error('Group not found');
-      router.push('/discover');
+      router.push('/community');
     } finally {
       setLoading(false);
     }
@@ -184,15 +185,14 @@ export default function GroupDetailPage() {
                   className="mt-2 bg-white/10 border-purple-500/30 text-white"
                 />
               </div>
-              <div>
-                <Label className="text-purple-200">Cover Image URL</Label>
-                <Input
-                  value={editForm.image}
-                  onChange={(e) => setEditForm((f) => ({ ...f, image: e.target.value }))}
-                  placeholder="https://images.unsplash.com/..."
-                  className="mt-2 bg-white/10 border-purple-500/30 text-white"
-                />
-              </div>
+              <ImageUploadField
+                label="Cover image"
+                optional
+                value={editForm.image}
+                onChange={(url) => setEditForm((f) => ({ ...f, image: url }))}
+                token={token}
+                disabled={actionLoading}
+              />
             </GlassCard>
             <Button
               type="submit"
@@ -215,7 +215,7 @@ export default function GroupDetailPage() {
   return (
     <AppPage>
       <HeroBanner src={image} alt={group.title}>
-        <Link href="/discover" className="absolute top-4 left-4">
+        <Link href="/community" className="absolute top-4 left-4">
           <Button variant="ghost" size="icon" className="bg-black/40 backdrop-blur text-white border border-white/10">
             ←
           </Button>
