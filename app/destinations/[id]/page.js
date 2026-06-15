@@ -89,7 +89,7 @@ export default function DestinationPage() {
   return (
     <AppPage>
       <HeroBanner src={meta.image} alt={meta.name}>
-        <Link href="/discover" className="absolute top-4 left-4 z-10">
+        <Link href="/travels" className="absolute top-4 left-4 z-10">
           <Button variant="ghost" size="icon" className="bg-slate-950/50 text-white rounded-xl">
             <ArrowLeft className="w-5 h-5" />
           </Button>

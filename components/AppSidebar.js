@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Compass, MessageCircle, Sparkles, User, Users } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Plane, MessageCircle, Sparkles, User, Users, LogOut, UserSearch } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
 
 const navItems = [
-  { icon: Compass, label: 'Discover', href: '/discover' },
+  { icon: Plane, label: 'Travels', href: '/travels' },
+  { icon: UserSearch, label: 'Travelers', href: '/travelers' },
   { icon: Users, label: 'Community', href: '/community' },
   { icon: Sparkles, label: 'Concierge', href: '/concierge' },
   { icon: MessageCircle, label: 'Messages', href: '/messages' },
@@ -14,11 +17,19 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logoutAsync } = useAuthStore();
+
+  const handleLogout = async () => {
+    await logoutAsync();
+    toast.success('Logged out successfully');
+    router.push('/auth');
+  };
 
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 z-50 w-64 flex-col bg-slate-950/95 backdrop-blur-xl border-r border-purple-500/20">
       <div className="p-6 border-b border-purple-500/20">
-        <Link href="/discover" className="flex items-center gap-3 group">
+        <Link href="/travels" className="flex items-center gap-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-600/30 group-hover:scale-105 transition-transform">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
@@ -29,7 +40,7 @@ export function AppSidebar() {
         </Link>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -51,7 +62,14 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-purple-500/20">
+      <div className="p-4 border-t border-purple-500/20 space-y-3">
+        {user && (
+          <div className="px-3 py-2 rounded-lg bg-white/5 border border-purple-500/20">
+            <p className="text-white text-sm font-medium truncate">{user.name}</p>
+            <p className="text-purple-400 text-xs truncate">{user.email}</p>
+          </div>
+        )}
+
         <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-pink-900/30 border border-purple-500/30 p-4">
           <p className="text-white text-sm font-semibold mb-1">Go Premium</p>
           <p className="text-purple-300 text-xs mb-3">Unlimited AI concierge & more</p>
@@ -62,6 +80,15 @@ export function AppSidebar() {
             Upgrade · £4.99/mo
           </Link>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-300 hover:bg-red-500/10 hover:text-red-200 transition-all border border-transparent hover:border-red-500/20"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Log out</span>
+        </button>
       </div>
     </aside>
   );

@@ -24,7 +24,7 @@ export function LandingNav({ joinLabel = 'Join Beta' }) {
             {user.name}
           </span>
         </Link>
-        <Link href="/discover">
+        <Link href="/travels">
           <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25">
             Open App
           </Button>

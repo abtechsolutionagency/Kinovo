@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, MessageCircle, Sparkles, User, Users } from 'lucide-react';
+import { Plane, MessageCircle, Sparkles, User, Users, UserSearch } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navItems = [
-  { icon: Compass, label: 'Discover', href: '/discover' },
+  { icon: Plane, label: 'Travels', href: '/travels' },
+  { icon: UserSearch, label: 'Travelers', href: '/travelers' },
   { icon: Users, label: 'Community', href: '/community' },
   { icon: Sparkles, label: 'Concierge', href: '/concierge' },
   { icon: MessageCircle, label: 'Messages', href: '/messages' },

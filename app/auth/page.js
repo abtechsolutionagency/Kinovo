@@ -41,7 +41,7 @@ export default function AuthPage() {
 
       setAuth({ user: data.user, token: data.token });
       toast.success(mode === 'login' ? 'Welcome back!' : 'Account created successfully!');
-      router.push('/discover');
+      router.push('/travels');
     } catch (error) {
       toast.error(error.message || 'Authentication failed');
     } finally {

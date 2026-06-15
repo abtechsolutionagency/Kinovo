@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
-const PUBLIC_PATHS = ['/', '/landing', '/auth', '/safety'];
+const PUBLIC_PATHS = ['/', '/landing', '/auth', '/safety', '/admin/login'];
 const AUTH_PATHS = ['/auth', '/auth/reset-password'];
 
 export function AuthProvider({ children }) {
@@ -19,18 +19,25 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (isInitializing) return;
 
-    const isPublic = PUBLIC_PATHS.some(
-      (p) => pathname === p || pathname.startsWith('/auth')
-    );
+    const isPublic =
+      PUBLIC_PATHS.some((p) => pathname === p) ||
+      pathname.startsWith('/auth') ||
+      pathname === '/admin/login';
+
     const isAuthPage = AUTH_PATHS.some((p) => pathname.startsWith(p));
+    const isAdminRoute = pathname.startsWith('/admin') && pathname !== '/admin/login';
 
     if (!isAuthenticated && !isPublic) {
-      router.replace('/auth');
+      if (isAdminRoute) {
+        router.replace('/admin/login');
+      } else {
+        router.replace('/auth');
+      }
       return;
     }
 
     if (isAuthenticated && isAuthPage) {
-      router.replace('/discover');
+      router.replace('/travels');
     }
   }, [isAuthenticated, isInitializing, pathname, router]);
 

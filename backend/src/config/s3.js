@@ -59,3 +59,10 @@ export function buildAvatarKey(userId, originalName) {
   if (!['.jpg', '.png', '.webp', '.gif'].includes(ext)) ext = '.jpg';
   return `avatars/${userId}-${Date.now()}${ext}`;
 }
+
+export function buildCoverKey(userId, originalName) {
+  let ext = path.extname(originalName || '').toLowerCase();
+  if (ext === '.jpeg') ext = '.jpg';
+  if (!['.jpg', '.png', '.webp', '.gif'].includes(ext)) ext = '.jpg';
+  return `covers/${userId}-${Date.now()}${ext}`;
+}
