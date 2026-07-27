@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { MapPin, Sparkles, Shield } from 'lucide-react';
+import { MapPin, Sparkles, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
@@ -31,21 +31,40 @@ export function TravelerCard({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-white/5 backdrop-blur-lg border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/50 transition-all"
+      className={`backdrop-blur-lg rounded-xl p-4 transition-all ${
+        traveler.isBoosted
+          ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/40 shadow-lg shadow-yellow-500/10'
+          : 'bg-white/5 border border-purple-500/20 hover:border-purple-500/50'
+      }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
         <Link href={`/traveler/${traveler.id}`}>
-          <img
-            src={resolveAvatarUrl(traveler.avatar)}
-            alt={traveler.name}
-            className="w-16 h-16 rounded-full object-cover border border-purple-500/30 bg-purple-500/20"
-          />
+          <div className="relative">
+            <img
+              src={resolveAvatarUrl(traveler.avatar)}
+              alt={traveler.name}
+              className={`w-16 h-16 rounded-full object-cover bg-purple-500/20 ${
+                traveler.isBoosted ? 'border-2 border-yellow-400/70' : 'border border-purple-500/30'
+              }`}
+            />
+            {traveler.isBoosted && (
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center border-2 border-slate-950">
+                <Zap className="w-3 h-3 text-white fill-white" />
+              </div>
+            )}
+          </div>
         </Link>
         <div className="flex-1 min-w-0">
           <Link href={`/traveler/${traveler.id}`} className="block">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h3 className="text-white font-semibold truncate">{traveler.name}</h3>
               {traveler.verified && <Shield className="w-4 h-4 text-blue-400 shrink-0" />}
+              {traveler.isBoosted && (
+                <Badge className="bg-gradient-to-r from-yellow-500/25 to-orange-500/25 text-yellow-200 border-yellow-500/40 text-[10px] shrink-0 px-1.5 py-0">
+                  <Zap className="w-3 h-3 mr-0.5 fill-current" />
+                  Boosted
+                </Badge>
+              )}
             </div>
           </Link>
           {traveler.location && (

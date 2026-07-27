@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { imageUpload } from '../middleware/imageUpload.js';
 import {
+  getPremiumSettings,
+  updatePremiumSettings,
+  boostProfile,
+  uploadGalleryPhoto,
+  removeGalleryPhoto,
+} from '../controllers/premiumController.js';
+import {
   getProfile,
   updateProfile,
   uploadAvatar,
@@ -30,6 +37,11 @@ router.get('/me/interests', asyncHandler(getInterests));
 router.put('/me/interests', asyncHandler(updateInterests));
 router.get('/me/preferences', asyncHandler(getPreferences));
 router.put('/me/preferences', asyncHandler(updatePreferences));
+router.get('/me/premium', asyncHandler(getPremiumSettings));
+router.patch('/me/premium', asyncHandler(updatePremiumSettings));
+router.post('/me/premium/boost', asyncHandler(boostProfile));
+router.post('/me/premium/gallery', upload.single('photo'), asyncHandler(uploadGalleryPhoto));
+router.delete('/me/premium/gallery', asyncHandler(removeGalleryPhoto));
 
 router.get('/discover', asyncHandler(discoverTravelers));
 router.get('/:id/match-score', asyncHandler(getMatchScore));

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Plane, MessageCircle, Sparkles, User, Users, LogOut, UserSearch } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
+import { getPlanLabel } from '@/lib/plans';
 import { toast } from 'sonner';
 
 const navItems = [
@@ -19,6 +21,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logoutAsync } = useAuthStore();
+  const { plan } = usePlanFeatures();
 
   const handleLogout = async () => {
     await logoutAsync();
@@ -70,16 +73,33 @@ export function AppSidebar() {
           </div>
         )}
 
-        <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-pink-900/30 border border-purple-500/30 p-4">
-          <p className="text-white text-sm font-semibold mb-1">Go Premium</p>
-          <p className="text-purple-300 text-xs mb-3">Unlimited AI concierge & more</p>
-          <Link
-            href="/profile"
-            className="block text-center text-xs font-semibold py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 transition-opacity"
-          >
-            Upgrade · £4.99/mo
-          </Link>
-        </div>
+        {plan !== 'premium' && (
+          <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-pink-900/30 border border-purple-500/30 p-4">
+            <p className="text-white text-sm font-semibold mb-1">
+              {plan === 'free' ? 'Upgrade to Lite' : 'Go Premium'}
+            </p>
+            <p className="text-purple-300 text-xs mb-3">
+              {plan === 'free'
+                ? 'Unlock AI concierge, translation & filters'
+                : 'Unlimited AI concierge & premium perks'}
+            </p>
+            <Link
+              href="/pricing"
+              className="block text-center text-xs font-semibold py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90 transition-opacity"
+            >
+              View plans
+            </Link>
+          </div>
+        )}
+
+        {plan === 'premium' && (
+          <div className="rounded-xl bg-gradient-to-br from-yellow-900/30 to-orange-900/20 border border-yellow-500/30 p-4">
+            <p className="text-white text-sm font-semibold mb-1 flex items-center gap-1">
+              <span>{getPlanLabel(plan)}</span>
+            </p>
+            <p className="text-yellow-200/80 text-xs">All features unlocked</p>
+          </div>
+        )}
 
         <button
           type="button"

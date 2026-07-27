@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { calculateMatchScore } from '../utils/matchScoring.js';
+import { isProfileBoosted } from '../utils/planAccess.js';
+import { areUsersConnected } from '../services/conversationService.js';
 
 function parseInterests(interests) {
   if (!interests) return [];
@@ -13,11 +15,15 @@ function parseInterests(interests) {
 }
 
 function buildDiscoverFilter(currentUserId, query) {
-  const { destination, interests, search } = query;
+  const { destination, interests, search, verified } = query;
   const filter = { _id: { $ne: currentUserId } };
 
   if (destination) {
     filter.location = { $regex: destination.trim(), $options: 'i' };
+  }
+
+  if (verified === 'true' || verified === true) {
+    filter.verified = true;
   }
 
   const interestList = parseInterests(interests);
@@ -54,9 +60,13 @@ export async function discoverTravelers(req, res) {
         ...user.toDiscoverJSON(),
         matchScore: match.score,
         matchReasons: match.reasons,
+        isBoosted: isProfileBoosted(user),
       };
     })
-    .sort((a, b) => b.matchScore - a.matchScore);
+    .sort((a, b) => {
+      if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
+      return b.matchScore - a.matchScore;
+    });
 
   return res.json({
     success: true,
@@ -84,14 +94,25 @@ export async function getTravelerProfile(req, res) {
   }
 
   const match = calculateMatchScore(req.user, user);
+  const isConnected = await areUsersConnected(req.user._id, user._id);
+  const hasPrivateGallery = (user.privateGallery || []).length > 0;
+
+  const profile = {
+    ...user.toDiscoverJSON(),
+    matchScore: match.score,
+    matchReasons: match.reasons,
+    isBoosted: isProfileBoosted(user),
+    isConnected,
+    hasPrivateGallery,
+  };
+
+  if (isConnected && hasPrivateGallery) {
+    profile.privateGallery = user.privateGallery;
+  }
 
   return res.json({
     success: true,
-    user: {
-      ...user.toDiscoverJSON(),
-      matchScore: match.score,
-      matchReasons: match.reasons,
-    },
+    user: profile,
   });
 }
 

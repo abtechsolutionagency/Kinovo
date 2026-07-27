@@ -67,8 +67,11 @@ export function initSocket(httpServer) {
     const userId = socket.userId;
     setUserOnline(userId, socket.id);
 
+    if (!socket.user?.anonymousBrowsing) {
+      io.emit('presence:update', { userId, online: true });
+    }
+
     socket.join(`user:${userId}`);
-    io.emit('presence:update', { userId, online: true });
 
     socket.on('conversation:join', async ({ conversationId }) => {
       try {
@@ -84,9 +87,24 @@ export function initSocket(httpServer) {
       socket.leave(`conversation:${conversationId}`);
     });
 
+    socket.on('presence:refresh', async () => {
+      const user = await User.findById(userId);
+      if (!user) return;
+      socket.user = user;
+
+      if (user.anonymousBrowsing) {
+        io.emit('presence:update', { userId, online: false });
+        return;
+      }
+
+      if (isUserOnline(userId)) {
+        io.emit('presence:update', { userId, online: true });
+      }
+    });
+
     socket.on('disconnect', () => {
       setUserOffline(userId, socket.id);
-      if (!isUserOnline(userId)) {
+      if (!isUserOnline(userId) && !socket.user?.anonymousBrowsing) {
         io.emit('presence:update', { userId, online: false });
       }
     });

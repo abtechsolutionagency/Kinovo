@@ -1,15 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, Send, Loader2, MapPin, Users, Calendar, TrendingUp } from 'lucide-react';
+import { Sparkles, Send, Loader2, MapPin, Users, Calendar, TrendingUp, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { BottomNav } from '@/components/BottomNav';
 import { AppPage, PageHeader } from '@/components/AppPage';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
+import { getPlanLabel } from '@/lib/plans';
+import { incrementConciergeUsage, getConciergeUsageToday } from '@/lib/features';
+import { featureApi } from '@/lib/apiClient';
+import { toast } from 'sonner';
 
 export default function ConciergePage() {
+  const { plan, hasFeature, conciergeLimit, user } = usePlanFeatures();
+
+  const canAccessConcierge = hasFeature('aiConcierge');
+
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -20,6 +31,20 @@ export default function ConciergePage() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [usageCount, setUsageCount] = useState(() =>
+    conciergeLimit ? getConciergeUsageToday(user?.id) : 0
+  );
+
+  const remainingToday =
+    conciergeLimit === null ? null : Math.max(0, (conciergeLimit || 0) - usageCount);
+  const canSend =
+    canAccessConcierge && (conciergeLimit === null || usageCount < conciergeLimit);
+  const planBadge =
+    plan === 'premium'
+      ? 'Unlimited'
+      : plan === 'lite'
+        ? `${remainingToday ?? 0}/${conciergeLimit} today`
+        : 'Locked';
 
   const mockResponses = [
     "Based on your profile, I'd recommend checking out Pacha Ibiza tonight. It's known for its open-minded crowd and amazing music. There are 12 Kinovo members planning to be there!",
@@ -39,6 +64,20 @@ export default function ConciergePage() {
     e.preventDefault();
     if (!input.trim()) return;
 
+    if (!canAccessConcierge) {
+      toast.error('Upgrade to Lite to use AI Concierge');
+      return;
+    }
+
+    if (!canSend) {
+      toast.error(
+        plan === 'lite'
+          ? 'Daily limit reached. Upgrade to Premium for unlimited AI concierge.'
+          : 'Upgrade your plan to use AI Concierge'
+      );
+      return;
+    }
+
     const userMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -49,18 +88,41 @@ export default function ConciergePage() {
     setInput('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    if (conciergeLimit !== null && user?.id) {
+      incrementConciergeUsage(user.id);
+      setUsageCount(getConciergeUsageToday(user.id));
+    }
+
+    try {
+      const data = await featureApi.concierge(userMessage.content);
       const aiResponse = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response || 'Sorry, I could not generate a response.',
+      };
+      setMessages((prev) => [...prev, aiResponse]);
+    } catch {
+      toast.error('AI concierge is temporarily unavailable');
+      const fallback = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: mockResponses[Math.floor(Math.random() * mockResponses.length)],
       };
-      setMessages((prev) => [...prev, aiResponse]);
+      setMessages((prev) => [...prev, fallback]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleQuickQuestion = (question) => {
+    if (!canAccessConcierge) {
+      toast.error('Upgrade to Lite to use AI Concierge');
+      return;
+    }
+    if (!canSend) {
+      toast.error('Daily limit reached. Upgrade to Premium for unlimited access.');
+      return;
+    }
     setInput(question);
   };
 
@@ -71,11 +133,32 @@ export default function ConciergePage() {
           title="AI Concierge"
           subtitle="Your personal travel assistant"
           action={
-            <div className="px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] shrink-0">
-              Unlimited ✨
-            </div>
+            !canAccessConcierge ? (
+              <Link href="/pricing">
+                <div className="px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] shrink-0 hover:bg-purple-500/30 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Upgrade for AI
+                </div>
+              </Link>
+            ) : (
+              <div className="px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] shrink-0">
+                {getPlanLabel(plan)} · {planBadge}
+              </div>
+            )
           }
         />
+
+        {!canAccessConcierge && (
+          <div className="px-4 pt-2">
+            <UpgradePrompt feature="aiConcierge" />
+          </div>
+        )}
+
+        {canAccessConcierge && plan === 'lite' && remainingToday === 0 && (
+          <div className="px-4 pt-2">
+            <UpgradePrompt feature="unlimitedConcierge" compact />
+          </div>
+        )}
 
         <ScrollArea className="flex-1 px-4">
           <div className="space-y-4 py-4 pb-4">
@@ -117,7 +200,7 @@ export default function ConciergePage() {
           </div>
         </ScrollArea>
 
-        {messages.length === 1 && (
+        {messages.length === 1 && canAccessConcierge && (
           <div className="px-4 pb-3">
             <p className="text-purple-300 text-xs mb-2">Quick questions</p>
             <div className="grid grid-cols-2 gap-2">
@@ -129,7 +212,8 @@ export default function ConciergePage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.08 }}
                   onClick={() => handleQuickQuestion(q.text)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-purple-500/20 hover:border-purple-500/50 text-purple-200 text-xs text-left transition-all"
+                  disabled={!canSend}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-purple-500/20 hover:border-purple-500/50 text-purple-200 text-xs text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <q.icon className="w-4 h-4 shrink-0 text-purple-400" />
                   <span>{q.text}</span>
@@ -140,23 +224,36 @@ export default function ConciergePage() {
         )}
 
         <div className="bg-slate-950/90 backdrop-blur-xl border-t border-purple-500/20 p-4 pb-[max(5rem,env(safe-area-inset-bottom))]">
-          <form onSubmit={handleSend} className="flex gap-2">
-            <Input
-              placeholder="Ask about travel, nightlife, or people..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isLoading}
-              className="bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400 h-11"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isLoading || !input.trim()}
-              className="h-11 w-11 shrink-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            </Button>
-          </form>
+          {!canAccessConcierge ? (
+            <div className="text-center py-2">
+              <p className="text-purple-300 text-sm mb-3">AI Concierge is available on Lite and Premium plans</p>
+              <Link href="/pricing">
+                <Button className="bg-gradient-to-r from-purple-600 to-pink-600">Upgrade to Lite</Button>
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={handleSend} className="flex gap-2">
+              <Input
+                placeholder={
+                  canSend
+                    ? 'Ask about travel, nightlife, or people...'
+                    : 'Daily limit reached — upgrade for unlimited'
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isLoading || !canSend}
+                className="bg-white/10 border-purple-500/30 text-white placeholder:text-purple-300/50 focus:border-purple-400 h-11"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={isLoading || !input.trim() || !canSend}
+                className="h-11 w-11 shrink-0 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              </Button>
+            </form>
+          )}
         </div>
 
         <BottomNav />

@@ -15,6 +15,8 @@ import travelRoutes from './routes/travels.js';
 import adminRoutes from './routes/admin.js';
 import conversationRoutes from './routes/conversations.js';
 import uploadRoutes from './routes/uploads.js';
+import billingRoutes from './routes/billing.js';
+import { handleStripeWebhook } from './controllers/billingController.js';
 import { ensureUploadDir } from './controllers/profileController.js';
 import { ensureCoverUploadDir } from './controllers/uploadController.js';
 import { applySecurityMiddleware, notFoundHandler } from './middleware/security.js';
@@ -53,6 +55,16 @@ function createCorsMiddleware() {
 }
 
 app.use(createCorsMiddleware());
+
+// Stripe webhooks require the raw body for signature verification
+app.post(
+  '/api/billing/webhook',
+  express.raw({ type: 'application/json' }),
+  (req, res, next) => {
+    handleStripeWebhook(req, res).catch(next);
+  }
+);
+
 app.use(express.json({ limit: '10mb' }));
 applySecurityMiddleware(app);
 
@@ -78,6 +90,7 @@ app.use('/api/travels', travelRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/billing', billingRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

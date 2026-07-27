@@ -1,20 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Loader2, Plane, Filter } from 'lucide-react';
+import { Loader2, Plane, Filter, Lock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { BottomNav } from '@/components/BottomNav';
 import { SearchBar } from '@/components/SearchBar';
 import { AppPage, PageContent, PageHeader, EmptyState } from '@/components/AppPage';
 import { TravelCard } from '@/components/TravelCard';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { useAuthStore } from '@/store/authStore';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
 import { travelApi } from '@/lib/apiClient';
 import { mockDestinations } from '@/lib/mockData';
 import { toast } from 'sonner';
 
 export default function TravelsPage() {
   const { token } = useAuthStore();
+  const { hasFeature } = usePlanFeatures();
+  const canUseAdvancedFilters = hasFeature('advancedFilters');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [travels, setTravels] = useState([]);
   const [travelTotal, setTravelTotal] = useState(0);
@@ -27,8 +32,8 @@ export default function TravelsPage() {
     setLoading(true);
     try {
       const params = { limit: 20 };
-      if (destinationFilter) params.destination = destinationFilter;
-      if (upcomingOnly) params.upcoming = true;
+      if (canUseAdvancedFilters && destinationFilter) params.destination = destinationFilter;
+      if (canUseAdvancedFilters && upcomingOnly) params.upcoming = true;
       const data = await travelApi.list(params, token);
       setTravels(data.travels || []);
       setTravelTotal(data.total ?? data.travels?.length ?? 0);
@@ -38,16 +43,31 @@ export default function TravelsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, destinationFilter, upcomingOnly]);
+  }, [token, destinationFilter, upcomingOnly, canUseAdvancedFilters]);
 
   useEffect(() => {
     loadTravels();
   }, [loadTravels]);
 
   const filteredTravels = useMemo(() => {
-    if (!searchQuery) return travels;
+    let results = travels;
+    if (!canUseAdvancedFilters && (destinationFilter || upcomingOnly)) {
+      return results;
+    }
+    if (!canUseAdvancedFilters && searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return results.filter(
+        (t) =>
+          t.title?.toLowerCase().includes(q) ||
+          t.description?.toLowerCase().includes(q) ||
+          t.destinationName?.toLowerCase().includes(q) ||
+          t.destinationId?.toLowerCase().includes(q) ||
+          t.travelStyle?.toLowerCase().includes(q)
+      );
+    }
+    if (!searchQuery) return results;
     const q = searchQuery.toLowerCase();
-    return travels.filter(
+    return results.filter(
       (t) =>
         t.title?.toLowerCase().includes(q) ||
         t.description?.toLowerCase().includes(q) ||
@@ -55,7 +75,23 @@ export default function TravelsPage() {
         t.destinationId?.toLowerCase().includes(q) ||
         t.travelStyle?.toLowerCase().includes(q)
     );
-  }, [travels, searchQuery]);
+  }, [travels, searchQuery, canUseAdvancedFilters, destinationFilter, upcomingOnly]);
+
+  const handleDestinationChange = (value) => {
+    if (!canUseAdvancedFilters) {
+      toast.error('Upgrade to Lite to use advanced filters');
+      return;
+    }
+    setDestinationFilter(value);
+  };
+
+  const handleUpcomingChange = (checked) => {
+    if (!canUseAdvancedFilters) {
+      toast.error('Upgrade to Lite to use advanced filters');
+      return;
+    }
+    setUpcomingOnly(checked);
+  };
 
   return (
     <AppPage>
@@ -74,11 +110,13 @@ export default function TravelsPage() {
           <div className="flex items-center gap-2 text-purple-300 text-sm shrink-0">
             <Filter className="w-4 h-4" />
             Filters
+            {!canUseAdvancedFilters && <Lock className="w-3.5 h-3.5 text-purple-500" />}
           </div>
           <select
             value={destinationFilter}
-            onChange={(e) => setDestinationFilter(e.target.value)}
-            className="h-10 rounded-lg bg-white/10 border border-purple-500/30 text-white px-3 text-sm flex-1 sm:max-w-[220px]"
+            onChange={(e) => handleDestinationChange(e.target.value)}
+            disabled={!canUseAdvancedFilters}
+            className="h-10 rounded-lg bg-white/10 border border-purple-500/30 text-white px-3 text-sm flex-1 sm:max-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="" className="bg-slate-900">All destinations</option>
             {mockDestinations.map((d) => (
@@ -88,8 +126,16 @@ export default function TravelsPage() {
             ))}
           </select>
           <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-purple-500/20">
-            <Switch id="upcoming" checked={upcomingOnly} onCheckedChange={setUpcomingOnly} />
-            <Label htmlFor="upcoming" className="text-purple-200 text-sm cursor-pointer">
+            <Switch
+              id="upcoming"
+              checked={upcomingOnly}
+              onCheckedChange={handleUpcomingChange}
+              disabled={!canUseAdvancedFilters}
+            />
+            <Label
+              htmlFor="upcoming"
+              className={`text-sm cursor-pointer ${canUseAdvancedFilters ? 'text-purple-200' : 'text-purple-400'}`}
+            >
               Upcoming only
             </Label>
           </div>
@@ -97,6 +143,12 @@ export default function TravelsPage() {
             <span className="text-purple-400 text-xs sm:ml-auto">{travelTotal} trips found</span>
           )}
         </div>
+
+        {!canUseAdvancedFilters && (
+          <div className="mb-5">
+            <UpgradePrompt feature="advancedFilters" />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12">

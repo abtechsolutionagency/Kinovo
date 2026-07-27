@@ -10,6 +10,13 @@ import {
 } from '../services/conversationService.js';
 import { isUserOnline, emitNewMessage, emitMessagesRead } from '../socket/index.js';
 
+function shouldShowOnline(user) {
+  if (!user) return false;
+  if (user.anonymousBrowsing) return false;
+  const userId = user._id?.toString() || user.toString();
+  return isUserOnline(userId);
+}
+
 export async function createConversation(req, res) {
   const { targetUserId } = req.body;
 
@@ -50,7 +57,7 @@ export async function listConversations(req, res) {
     success: true,
     conversations: conversations.map((c) =>
       c.toListJSON(req.user._id, {
-        online: isUserOnline(c.getOtherParticipant(req.user._id)?._id || c.getOtherParticipant(req.user._id)),
+        online: shouldShowOnline(c.getOtherParticipant(req.user._id)),
       })
     ),
     total: conversations.length,
@@ -76,7 +83,7 @@ export async function getConversation(req, res) {
       lastMessage: conversation.lastMessage,
       lastMessageAt: conversation.lastMessageAt,
       unread: conversation.unreadCountFor(req.user._id),
-      online: isUserOnline(otherId),
+      online: shouldShowOnline(other),
     },
   });
 }
@@ -224,7 +231,7 @@ export async function searchConversations(req, res) {
     success: true,
     conversations: filtered.map((c) =>
       c.toListJSON(req.user._id, {
-        online: isUserOnline(c.getOtherParticipant(req.user._id)?._id || c.getOtherParticipant(req.user._id)),
+        online: shouldShowOnline(c.getOtherParticipant(req.user._id)),
       })
     ),
     total: filtered.length,

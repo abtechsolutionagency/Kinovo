@@ -3,7 +3,7 @@ import { Connection } from '../models/Connection.js';
 import { User } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-export async function assertUsersConnected(userId, targetUserId) {
+export async function areUsersConnected(userId, targetUserId) {
   const connection = await Connection.findOne({
     status: 'accepted',
     $or: [
@@ -11,8 +11,12 @@ export async function assertUsersConnected(userId, targetUserId) {
       { requester: targetUserId, recipient: userId },
     ],
   });
+  return Boolean(connection);
+}
 
-  if (!connection) {
+export async function assertUsersConnected(userId, targetUserId) {
+  const connected = await areUsersConnected(userId, targetUserId);
+  if (!connected) {
     throw new AppError(
       'You must be connected with this user before messaging',
       403,

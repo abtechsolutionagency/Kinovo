@@ -12,11 +12,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/store/authStore';
-import { conversationApi } from '@/lib/apiClient';
+import { conversationApi, featureApi } from '@/lib/apiClient';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { toast } from 'sonner';
 import {
   connectSocket,
-  disconnectSocket,
   getSocket,
   joinConversation,
   leaveConversation,
@@ -37,6 +39,14 @@ function formatListTime(isoString) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+async function translateMessageText(text, targetLanguage = 'en') {
+  const result = await featureApi.translate(text, targetLanguage);
+  if (!result.success) return null;
+  const translated = result.translated?.trim();
+  if (!translated || translated === text.trim()) return null;
+  return translated;
+}
+
 export default function MessagesPage() {
   return (
     <Suspense
@@ -53,6 +63,8 @@ export default function MessagesPage() {
 
 function MessagesContent() {
   const { user, token } = useAuthStore();
+  const { hasFeature } = usePlanFeatures();
+  const canTranslate = hasFeature('translation');
   const searchParams = useSearchParams();
   const openConversationId = searchParams.get('conversation');
   const [conversations, setConversations] = useState([]);
@@ -60,11 +72,38 @@ function MessagesContent() {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const [translateEnabled, setTranslateEnabled] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const urlOpenedRef = useRef(false);
+  const translateEnabledRef = useRef(translateEnabled);
+
+  useEffect(() => {
+    translateEnabledRef.current = translateEnabled;
+  }, [translateEnabled]);
+
+  const applyTranslationToMessage = useCallback(
+    async (msg, currentUserId) => {
+      if (!msg?.text || msg.senderId === currentUserId) return msg;
+      if (msg.translated && msg.translated !== msg.text) return msg;
+      try {
+        const translated = await translateMessageText(msg.text, 'en');
+        return translated ? { ...msg, translated } : msg;
+      } catch {
+        return msg;
+      }
+    },
+    []
+  );
+
+  const applyTranslations = useCallback(
+    async (msgs, currentUserId) => {
+      return Promise.all(msgs.map((msg) => applyTranslationToMessage(msg, currentUserId)));
+    },
+    [applyTranslationToMessage]
+  );
 
   const loadConversations = useCallback(async () => {
     if (!token) return;
@@ -81,20 +120,29 @@ function MessagesContent() {
   }, [token, searchQuery]);
 
   const loadMessages = useCallback(
-    async (conversationId) => {
+    async (conversationId, { withTranslation = false } = {}) => {
       if (!token || !conversationId) return;
       try {
         const data = await conversationApi.getMessages(conversationId, { limit: 50 }, token);
-        setMessages(data.messages || []);
+        let loaded = data.messages || [];
+
+        if (withTranslation && canTranslate) {
+          setTranslating(true);
+          loaded = await applyTranslations(loaded, user?.id);
+        }
+
+        setMessages(loaded);
         await conversationApi.markRead(conversationId, token);
         setConversations((prev) =>
           prev.map((c) => (c.id === conversationId ? { ...c, unread: 0 } : c))
         );
       } catch (err) {
         console.error('Failed to load messages:', err);
+      } finally {
+        setTranslating(false);
       }
     },
-    [token]
+    [token, canTranslate, user?.id, applyTranslations]
   );
 
   useEffect(() => {
@@ -135,11 +183,22 @@ function MessagesContent() {
     const socket = getSocket();
     if (!socket) return;
 
-    const onNewMessage = (msg) => {
+    const onNewMessage = async (msg) => {
+      let nextMessage = msg;
+
+      if (
+        selectedChat?.id === msg.conversationId &&
+        translateEnabledRef.current &&
+        canTranslate &&
+        msg.senderId !== user?.id
+      ) {
+        nextMessage = await applyTranslationToMessage(msg, user?.id);
+      }
+
       if (selectedChat?.id === msg.conversationId) {
         setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
+          if (prev.some((m) => m.id === nextMessage.id)) return prev;
+          return [...prev, nextMessage];
         });
         conversationApi.markRead(msg.conversationId, token);
       }
@@ -184,11 +243,7 @@ function MessagesContent() {
       socket.off('message:new', onNewMessage);
       socket.off('presence:update', onPresence);
     };
-  }, [token, selectedChat?.id, user?.id]);
-
-  useEffect(() => {
-    return () => disconnectSocket();
-  }, []);
+  }, [token, selectedChat?.id, user?.id, canTranslate, applyTranslationToMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -196,8 +251,21 @@ function MessagesContent() {
 
   const openChat = async (chat) => {
     setSelectedChat(chat);
-    await loadMessages(chat.id);
+    await loadMessages(chat.id, { withTranslation: translateEnabled });
     joinConversation(chat.id);
+    try {
+      const data = await conversationApi.get(chat.id, token);
+      setSelectedChat((prev) =>
+        prev?.id === chat.id ? { ...prev, online: data.conversation.online } : prev
+      );
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === chat.id ? { ...c, online: data.conversation.online } : c
+        )
+      );
+    } catch {
+      /* keep list state */
+    }
   };
 
   const closeChat = () => {
@@ -236,6 +304,28 @@ function MessagesContent() {
       setMessage(text);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleTranslateToggle = async (checked) => {
+    if (!canTranslate) {
+      toast.error('Upgrade to Lite to unlock real-time translation');
+      return;
+    }
+
+    setTranslateEnabled(checked);
+
+    if (checked && selectedChat?.id) {
+      setTranslating(true);
+      try {
+        const translated = await applyTranslations(messages, user?.id);
+        setMessages(translated);
+        if (!translated.some((m) => m.translated && m.translated !== m.text)) {
+          await loadMessages(selectedChat.id, { withTranslation: true });
+        }
+      } finally {
+        setTranslating(false);
+      }
     }
   };
 
@@ -285,19 +375,36 @@ function MessagesContent() {
               <Globe className="w-4 h-4 text-purple-400" />
               <Label htmlFor="translate" className="text-purple-300 text-sm flex-1 cursor-pointer">
                 Auto-translate messages
+                {!canTranslate && <span className="text-purple-500 text-xs ml-1">(Lite+)</span>}
+                {translating && canTranslate && (
+                  <span className="text-purple-400 text-xs ml-2">Translating...</span>
+                )}
               </Label>
               <Switch
                 id="translate"
-                checked={translateEnabled}
-                onCheckedChange={setTranslateEnabled}
+                checked={translateEnabled && canTranslate}
+                onCheckedChange={handleTranslateToggle}
+                disabled={!canTranslate || translating}
               />
             </div>
+            {translateEnabled && canTranslate && (
+              <p className="text-purple-400 text-xs mt-2 px-1">
+                Incoming messages are translated to English below the original text.
+              </p>
+            )}
+            {!canTranslate && (
+              <div className="mt-2">
+                <UpgradePrompt feature="translation" compact />
+              </div>
+            )}
           </div>
 
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4 pb-4">
               {messages.map((msg) => {
                 const isMine = msg.senderId === user?.id;
+                const showTranslation =
+                  translateEnabled && !isMine && msg.translated && msg.translated !== msg.text;
                 return (
                   <motion.div
                     key={msg.id}
@@ -313,7 +420,7 @@ function MessagesContent() {
                       }`}
                     >
                       <p className="text-sm">{msg.text}</p>
-                      {translateEnabled && !isMine && msg.translated && (
+                      {showTranslation && (
                         <p className="text-xs text-purple-200 mt-2 pt-2 border-t border-purple-400/30">
                           <Globe className="w-3 h-3 inline mr-1" />
                           {msg.translated}

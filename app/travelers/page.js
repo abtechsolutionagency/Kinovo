@@ -1,20 +1,30 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Users, Sparkles } from 'lucide-react';
+import { Loader2, Users, Sparkles, Filter, Lock, Shield } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { BottomNav } from '@/components/BottomNav';
 import { SearchBar } from '@/components/SearchBar';
 import { AppPage, PageContent, PageHeader, EmptyState } from '@/components/AppPage';
 import { TravelerCard } from '@/components/TravelerCard';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { useAuthStore } from '@/store/authStore';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
 import { discoverApi, connectionApi } from '@/lib/apiClient';
+import { TRAVEL_INTERESTS } from '@/lib/profileOptions';
 import { useConnectionMap } from '@/hooks/useConnectionMap';
 import { toast } from 'sonner';
 
 export default function TravelersPage() {
   const { token } = useAuthStore();
+  const { hasFeature } = usePlanFeatures();
+  const canUseAdvancedFilters = hasFeature('advancedFilters');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [interestFilter, setInterestFilter] = useState('');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [travelers, setTravelers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connectingId, setConnectingId] = useState(null);
@@ -29,10 +39,10 @@ export default function TravelersPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const data = await discoverApi.browseTravelers(
-        { search: debouncedSearch || undefined, limit: 30 },
-        token
-      );
+      const params = { search: debouncedSearch || undefined, limit: 30 };
+      if (canUseAdvancedFilters && interestFilter) params.interests = interestFilter;
+      if (canUseAdvancedFilters && verifiedOnly) params.verified = true;
+      const data = await discoverApi.browseTravelers(params, token);
       setTravelers(data.users || []);
     } catch {
       toast.error('Failed to load travelers');
@@ -40,7 +50,7 @@ export default function TravelersPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, debouncedSearch]);
+  }, [token, debouncedSearch, interestFilter, verifiedOnly, canUseAdvancedFilters]);
 
   useEffect(() => {
     loadTravelers();
@@ -60,6 +70,22 @@ export default function TravelersPage() {
     }
   };
 
+  const handleInterestChange = (value) => {
+    if (!canUseAdvancedFilters) {
+      toast.error('Upgrade to Lite to use advanced filters');
+      return;
+    }
+    setInterestFilter(value);
+  };
+
+  const handleVerifiedChange = (checked) => {
+    if (!canUseAdvancedFilters) {
+      toast.error('Upgrade to Lite to use advanced filters');
+      return;
+    }
+    setVerifiedOnly(checked);
+  };
+
   return (
     <AppPage>
       <PageHeader title="Travelers" subtitle="Find and connect with fellow travelers" />
@@ -77,6 +103,48 @@ export default function TravelersPage() {
           <Sparkles className="w-4 h-4 shrink-0" />
           <span className="text-sm">AI matching travelers based on your profile</span>
         </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5 p-4 rounded-xl bg-white/5 border border-purple-500/20">
+          <div className="flex items-center gap-2 text-purple-300 text-sm shrink-0">
+            <Filter className="w-4 h-4" />
+            Advanced filters
+            {!canUseAdvancedFilters && <Lock className="w-3.5 h-3.5 text-purple-500" />}
+          </div>
+          <select
+            value={interestFilter}
+            onChange={(e) => handleInterestChange(e.target.value)}
+            disabled={!canUseAdvancedFilters}
+            className="h-10 rounded-lg bg-white/10 border border-purple-500/30 text-white px-3 text-sm flex-1 sm:max-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="" className="bg-slate-900">All interests</option>
+            {TRAVEL_INTERESTS.map((interest) => (
+              <option key={interest} value={interest} className="bg-slate-900">
+                {interest}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/5 border border-purple-500/20">
+            <Switch
+              id="verified"
+              checked={verifiedOnly}
+              onCheckedChange={handleVerifiedChange}
+              disabled={!canUseAdvancedFilters}
+            />
+            <Label
+              htmlFor="verified"
+              className={`text-sm cursor-pointer flex items-center gap-1 ${canUseAdvancedFilters ? 'text-purple-200' : 'text-purple-400'}`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              Verified only
+            </Label>
+          </div>
+        </div>
+
+        {!canUseAdvancedFilters && (
+          <div className="mb-5">
+            <UpgradePrompt feature="advancedFilters" />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12">

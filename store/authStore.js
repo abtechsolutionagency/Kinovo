@@ -16,14 +16,14 @@ export const useAuthStore = create(
           user,
           token,
           isAuthenticated: !!user,
-          isPremium: user?.isPremium ?? false,
+          isPremium: user?.isPremium ?? user?.subscriptionPlan === 'premium',
           isInitializing: false,
         }),
       setUser: (user) =>
         set({
           user,
           isAuthenticated: !!user,
-          isPremium: user?.isPremium ?? false,
+          isPremium: user?.isPremium ?? user?.subscriptionPlan === 'premium',
         }),
       setPremium: (isPremium) => set({ isPremium }),
       setInitializing: (isInitializing) => set({ isInitializing }),
@@ -57,7 +57,7 @@ export const useAuthStore = create(
           set({
             user: data.user,
             isAuthenticated: true,
-            isPremium: data.user?.isPremium ?? false,
+            isPremium: data.user?.isPremium ?? data.user?.subscriptionPlan === 'premium',
             isInitializing: false,
           });
         } catch {

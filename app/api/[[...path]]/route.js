@@ -1,19 +1,6 @@
 // API route handler for Next.js
 import { NextResponse } from 'next/server';
-
-// Note: OpenAI integration will be activated when you add OPENAI_API_KEY to .env
-// For now, these endpoints return mock responses
-const OPENAI_ENABLED = !!process.env.OPENAI_API_KEY;
-
-let openai = null;
-if (OPENAI_ENABLED) {
-  try {
-    const OpenAI = require('openai');
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  } catch (e) {
-    console.log('OpenAI not configured yet');
-  }
-}
+import { getOpenAIClient, isOpenAIConfigured } from '@/lib/openai';
 
 // Mock data endpoints
 export async function GET(request) {
@@ -24,7 +11,7 @@ export async function GET(request) {
     return NextResponse.json({ 
       message: 'Kinovo API v1.0',
       status: 'running',
-      openai_enabled: OPENAI_ENABLED,
+      openai_enabled: isOpenAIConfigured(),
       endpoints: [
         '/api/auth',
         '/api/users',
@@ -50,7 +37,7 @@ export async function GET(request) {
 
   // AI Discussion Prompts Generator
   if (pathname === '/api/ai/discussion-prompts') {
-    if (OPENAI_ENABLED && openai) {
+    if (openai) {
       try {
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -91,6 +78,7 @@ export async function POST(request) {
   
   try {
     const body = await request.json();
+    const openai = getOpenAIClient();
 
     // Waitlist submission
     if (pathname === '/api/waitlist') {
@@ -131,7 +119,7 @@ export async function POST(request) {
 
     // AI Profile Enhancer
     if (pathname === '/api/ai/profile-enhance') {
-      if (OPENAI_ENABLED && openai) {
+      if (openai) {
         try {
           const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -173,7 +161,7 @@ Return only the improved profile text.`
 
     // AI Icebreaker Generator
     if (pathname === '/api/ai/icebreaker') {
-      if (OPENAI_ENABLED && openai) {
+      if (openai) {
         try {
           const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -216,7 +204,7 @@ Return as JSON array: ["starter 1", "starter 2", "starter 3"]`
 
     // AI Safety Moderation
     if (pathname === '/api/ai/moderate') {
-      if (OPENAI_ENABLED && openai) {
+      if (openai) {
         try {
           const moderation = await openai.moderations.create({
             model: 'omni-moderation-latest',
@@ -253,7 +241,7 @@ Return as JSON array: ["starter 1", "starter 2", "starter 3"]`
 
     // AI Concierge
     if (pathname === '/api/concierge') {
-      if (OPENAI_ENABLED && openai) {
+      if (openai) {
         try {
           const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -298,44 +286,6 @@ Be modern, concise, and friendly. Keep responses under 150 words.`
       return NextResponse.json({ 
         success: true,
         response: mockResponses[Math.floor(Math.random() * mockResponses.length)]
-      });
-    }
-
-    // Translation
-    if (pathname === '/api/translate') {
-      if (OPENAI_ENABLED && openai) {
-        try {
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: `Translate the following text to ${body.targetLanguage}. Only provide the translation, no explanations.`
-              },
-              {
-                role: 'user',
-                content: body.text
-              }
-            ]
-          });
-
-          return NextResponse.json({
-            success: true,
-            translated: completion.choices[0].message.content,
-            detectedLanguage: body.sourceLanguage || 'auto',
-            targetLanguage: body.targetLanguage
-          });
-        } catch (error) {
-          console.error('OpenAI translation error:', error);
-        }
-      }
-
-      // Mock response
-      return NextResponse.json({ 
-        success: true,
-        translated: body.text,
-        detectedLanguage: 'es',
-        targetLanguage: body.targetLanguage || 'en'
       });
     }
 

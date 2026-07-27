@@ -15,6 +15,7 @@ import {
   Loader2,
   Sparkles,
   Crown,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import { useAuthStore } from '@/store/authStore';
 import { discoverApi, connectionApi, conversationApi } from '@/lib/apiClient';
 import { resolveAvatarUrl } from '@/lib/avatarUrl';
 import { getMatchLevel } from '@/lib/matchScoring';
+import { PrivateGallerySection } from '@/components/PrivateGallerySection';
 import { toast } from 'sonner';
 
 export default function TravelerProfilePage() {
@@ -118,10 +120,16 @@ export default function TravelerProfilePage() {
             className="w-28 h-28 rounded-2xl border-4 border-slate-950 object-cover bg-white/10"
           />
           <div className="flex-1 pb-2">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h1 className="text-2xl font-bold text-white">{traveler.name}</h1>
               {traveler.verified && <Shield className="w-5 h-5 text-blue-400" />}
               {traveler.isPremium && <Crown className="w-5 h-5 text-yellow-400" />}
+              {traveler.isBoosted && (
+                <Badge className="bg-gradient-to-r from-yellow-500/25 to-orange-500/25 text-yellow-200 border-yellow-500/40">
+                  <Zap className="w-3.5 h-3.5 mr-1 fill-current" />
+                  Boosted
+                </Badge>
+              )}
             </div>
             {traveler.location && (
               <p className="text-purple-300 text-sm flex items-center gap-1">
@@ -194,6 +202,13 @@ export default function TravelerProfilePage() {
             {prefs.accommodation && <p><span className="text-purple-400">Stay:</span> {prefs.accommodation}</p>}
           </div>
         )}
+
+        <PrivateGallerySection
+          photos={traveler.privateGallery || []}
+          isConnected={connectionStatus === 'accepted' || traveler.isConnected}
+          hasPrivateGallery={traveler.hasPrivateGallery}
+          isSelf={isSelf}
+        />
 
         {!isSelf && (
           <div className="flex gap-3">

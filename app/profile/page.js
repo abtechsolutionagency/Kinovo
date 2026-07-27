@@ -28,10 +28,15 @@ import { BottomNav } from '@/components/BottomNav';
 import { AppPage, PageContent, GlassCard, HeroBanner, StatPill } from '@/components/AppPage';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { PlanFeaturesCard } from '@/components/PlanFeaturesCard';
+import { PrivateGallerySection } from '@/components/PrivateGallerySection';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { usePlanFeatures } from '@/hooks/usePlanFeatures';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { user, token, setUser, logoutAsync } = useAuthStore();
+  const { plan, hasFeature } = usePlanFeatures();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
@@ -237,27 +242,71 @@ export default function ProfilePage() {
           </GlassCard>
         )}
 
-        {!user.isPremium && (
+        <PlanFeaturesCard user={user} className="mb-4" />
+
+        <PrivateGallerySection
+          photos={user.privateGallery || []}
+          isSelf
+          editHref="/profile/edit"
+        />
+
+        {!hasFeature('profileBoosts') && plan !== 'premium' && (
+          <UpgradePrompt feature="profileBoosts" className="mb-4" />
+        )}
+
+        {plan === 'free' && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/60 to-pink-900/40 p-5 lg:p-6"
+            className="rounded-2xl overflow-hidden border border-purple-500/30 bg-gradient-to-br from-purple-900/60 to-pink-900/40 p-5 lg:p-6 mb-4"
           >
             <div className="flex items-start gap-3 mb-4">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
                 <Crown className="w-6 h-6 text-yellow-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Go Premium</h3>
+                <h3 className="text-lg font-bold text-white">Upgrade your plan</h3>
                 <p className="text-purple-200 text-sm mt-1">
-                  Unlimited AI concierge, translation & profile boosts
+                  Lite from £2.99/mo · Premium from £4.99/mo
                 </p>
               </div>
             </div>
-            <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 h-11 font-semibold">
-              Upgrade · £4.99/mo
-            </Button>
+            <Link href="/pricing">
+              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 h-11 font-semibold">
+                View plans
+              </Button>
+            </Link>
           </motion.div>
+        )}
+
+        {plan === 'lite' && (
+          <GlassCard className="mb-4 !p-4">
+            <p className="text-purple-300 text-sm">
+              Current plan:{' '}
+              <span className="text-white font-semibold capitalize">{plan}</span>
+              {user.subscriptionStatus && user.subscriptionStatus !== 'none' && (
+                <span className="text-purple-400"> · {user.subscriptionStatus}</span>
+              )}
+            </p>
+            <Link href="/pricing" className="text-purple-200 text-sm underline hover:text-white mt-2 inline-block">
+              Upgrade to Premium or manage billing
+            </Link>
+          </GlassCard>
+        )}
+
+        {plan === 'premium' && (
+          <GlassCard className="mb-4 !p-4">
+            <p className="text-purple-300 text-sm">
+              Current plan:{' '}
+              <span className="text-white font-semibold capitalize">{plan}</span>
+              {user.subscriptionStatus && user.subscriptionStatus !== 'none' && (
+                <span className="text-purple-400"> · {user.subscriptionStatus}</span>
+              )}
+            </p>
+            <Link href="/pricing" className="text-purple-200 text-sm underline hover:text-white mt-2 inline-block">
+              Manage subscription
+            </Link>
+          </GlassCard>
         )}
 
         {user.memberSince && (
